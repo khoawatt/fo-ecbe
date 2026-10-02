@@ -1,6 +1,6 @@
 # Round 3 — Authentication & Authorization
 
-Status: **Pending**
+Status: **In Progress**
 
 ## Scope
 
@@ -23,6 +23,30 @@ Status: **Pending**
    - expected protection
    - failure scenario
 
+## Progress — 2026-10-02
+
+Questions 1–4 completed as cold-answer evidence.
+
+### Interim assessment
+
+- **State:** Yellow
+- **Estimated mastery:** L2 — Use
+- LocalAuthGuard → Passport local strategy → validate → AuthService flow is mostly understood.
+- Main corrections:
+  - Access JWT is verified cryptographically using the signing secret; it is not compared with a server-stored access token.
+  - Passport attaches the strategy validate() return value to request.user; roles.decorator.ts does not.
+  - RolesGuard reads required-role metadata via Reflector and current role from request.user.role.
+  - ApiBearerAuth is Swagger/OpenAPI documentation metadata only; it does not enforce runtime authentication.
+  - In this legacy implementation, AuthController.login() ignores the req.user produced by LocalStrategy and calls AuthService.login(request), which performs another account lookup.
+
+Detailed capability assessment:
+
+khoawatt/storage/management/career-development/assessments/mock-tests/2026-10-02-nestjs-auth-authorization-round-03.md
+
+## Remaining
+
+Question 5 — concrete authorization audit of AccountController.
+
 ## Result
 
-TBD
+Pending Question 5 and re-answer/correction check.
