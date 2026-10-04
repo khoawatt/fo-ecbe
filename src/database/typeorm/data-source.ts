@@ -12,7 +12,7 @@ function required(name: string): string {
   return value;
 }
 
-export const AppDataSource = new DataSource({
+const AppDataSource = new DataSource({
   type: 'postgres',
   host: required('DB_HOST'),
   port: Number(process.env.DB_PORT ?? 5432),
