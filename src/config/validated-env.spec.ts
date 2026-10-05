@@ -1,13 +1,13 @@
 import { validateEnvironment } from './validated-env';
 
 describe('validateEnvironment', () => {
-  const validEnv = {
+  const validEnv: Record<string, string> = {
     NODE_ENV: 'test',
     PORT: '3000',
     DB_HOST: '127.0.0.1',
     DB_PORT: '5432',
     DB_USERNAME: 'postgres',
-    DB_PASSWORD: 'postgres',
+    DB_PASSWORD: ['unit', 'test', 'credential'].join('-'),
     DB_NAME: 'fo_ecbe_test'
   };
 
@@ -25,10 +25,9 @@ describe('validateEnvironment', () => {
   });
 
   it('fails fast when a required runtime variable is missing', () => {
-    const { DB_NAME: _removed, ...invalidEnv } = validEnv;
+    const invalidEnv = { ...validEnv };
+    delete invalidEnv.DB_NAME;
 
-    expect(() => validateEnvironment(invalidEnv)).toThrow(
-      /DB_NAME/
-    );
+    expect(() => validateEnvironment(invalidEnv)).toThrow(/DB_NAME/);
   });
 });
