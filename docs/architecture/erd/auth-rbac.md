@@ -4,6 +4,12 @@
 
 This document describes the normalized RBAC persistence model introduced in FO-003A.
 
+## Preview
+
+[![RBAC ERD](https://drive.google.com/thumbnail?id=1HZM9LXSIdz5nwKzyJyi5sylSgnW2dvVO&sz=w2000)](https://drive.google.com/file/d/1HZM9LXSIdz5nwKzyJyi5sylSgnW2dvVO/view?usp=drivesdk)
+
+> Click the preview to open the high-resolution image on Google Drive.
+
 ## Diagram
 
 ```mermaid
