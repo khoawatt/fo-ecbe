@@ -1,8 +1,8 @@
 import { Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { appConfig } from './app.config';
-import { databaseConfig } from './database.config';
-import { envSchema } from './env.schema';
+import { appConfig } from './app.config.js';
+import { databaseConfig } from './database.config.js';
+import { validateEnvironment } from './validated-env.js';
 @Global()
-@Module({imports:[ConfigModule.forRoot({isGlobal:true,cache:true,expandVariables:true,validationSchema:envSchema,validationOptions:{abortEarly:false},load:[appConfig,databaseConfig]})],exports:[ConfigModule]})
+@Module({imports:[ConfigModule.forRoot({isGlobal:true,cache:true,expandVariables:true,validate:validateEnvironment,load:[appConfig,databaseConfig]})],exports:[ConfigModule]})
 export class AppConfigModule {}
