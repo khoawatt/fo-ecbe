@@ -9,8 +9,8 @@ import {
   Unique,
 } from 'typeorm';
 
-import { PermissionEntity } from './permission.entity';
-import { RoleEntity } from './role.entity';
+import { PermissionEntity } from './permission.entity.js';
+import { RoleEntity } from './role.entity.js';
 
 @Entity({ name: 'role_permissions' })
 @Unique(

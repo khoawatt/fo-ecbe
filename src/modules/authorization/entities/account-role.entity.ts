@@ -9,8 +9,8 @@ import {
   Unique,
 } from 'typeorm';
 
-import { AccountEntity } from '../../account/persistence/account.entity';
-import { RoleEntity } from './role.entity';
+import { AccountEntity } from '../../account/persistence/account.entity.js';
+import { RoleEntity } from './role.entity.js';
 
 @Entity({ name: 'account_roles' })
 @Unique(
