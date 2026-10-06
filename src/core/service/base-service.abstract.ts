@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
-import { PageQuery } from '../../common/contracts/page-query';
-import { PageResult } from '../../common/contracts/page-result';
-import { BaseRepositoryInterface } from '../repository/base-repository.interface';
-import { BaseServiceInterface } from './base-service.interface';
+import type { PageQuery } from '../../common/contracts/page-query.js';
+import type { PageResult } from '../../common/contracts/page-result.js';
+import type { BaseRepositoryInterface } from '../repository/base-repository.interface.js';
+import type { BaseServiceInterface } from './base-service.interface.js';
 export abstract class BaseServiceAbstract<TEntity,TCreate,TUpdate> implements BaseServiceInterface<TEntity,TCreate,TUpdate>{protected constructor(protected readonly repository:BaseRepositoryInterface<TEntity,TCreate,TUpdate>){} async findById(id:string):Promise<TEntity>{const entity=await this.repository.findById(id);if(!entity)throw new NotFoundException('Resource not found');return entity;} findAll(query:PageQuery):Promise<PageResult<TEntity>>{return this.repository.findAll(query);} create(data:TCreate):Promise<TEntity>{return this.repository.create(data);} async update(id:string,data:TUpdate):Promise<TEntity>{const entity=await this.repository.update(id,data);if(!entity)throw new NotFoundException('Resource not found');return entity;} async remove(id:string):Promise<void>{const removed=await this.repository.softDelete(id);if(!removed)throw new NotFoundException('Resource not found');}}

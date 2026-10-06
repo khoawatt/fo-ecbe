@@ -1,4 +1,5 @@
-import { validateEnvironment } from './validated-env';
+import { describe, expect, it } from 'vitest';
+import { validateEnvironment } from './validated-env.js';
 
 describe('validateEnvironment', () => {
   const validEnv: Record<string, string> = {
