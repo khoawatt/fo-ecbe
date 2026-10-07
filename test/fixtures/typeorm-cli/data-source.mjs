@@ -1,15 +1,21 @@
 import 'dotenv/config';
 import 'reflect-metadata';
-import { Column, DataSource, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { DataSource, EntitySchema } from 'typeorm';
 
-@Entity('fo014_cli_smoke')
-class TypeOrmCliSmokeEntity {
-  @PrimaryGeneratedColumn()
-  id!: number;
-
-  @Column({ type: 'text' })
-  value!: string;
-}
+const TypeOrmCliSmokeEntity = new EntitySchema({
+  name: 'TypeOrmCliSmoke',
+  tableName: 'fo014_cli_smoke',
+  columns: {
+    id: {
+      type: Number,
+      primary: true,
+      generated: true,
+    },
+    value: {
+      type: String,
+    },
+  },
+});
 
 const migrations = process.env.TYPEORM_SMOKE_MIGRATIONS
   ? [process.env.TYPEORM_SMOKE_MIGRATIONS]
@@ -25,5 +31,5 @@ export default new DataSource({
   entities: [TypeOrmCliSmokeEntity],
   migrations,
   migrationsTableName: 'fo014_cli_smoke_migrations',
-  synchronize: false
+  synchronize: false,
 });

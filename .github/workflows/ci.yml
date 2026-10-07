@@ -43,9 +43,11 @@ jobs:
       - run: npm run migration:show
       - run: npm run migration:cli:smoke
       - run: npm run migration:run
+      - run: npm run migration:revert
+      - run: npm run migration:run
       - run: npm run test:e2e
       - run: npm run build
-      - run: npm run migration:show:prod
+      - run: npm run migration:show
       - name: Verify production startup
         run: |
           npm run start:prod > /tmp/fo-ecbe-startup.log 2>&1 &
