@@ -9,14 +9,11 @@ import {
   Unique,
 } from 'typeorm';
 
-import { AccountEntity } from '../../account/persistence/account.entity.js';
+import { AccountEntity } from './account.entity.js';
 import { RoleEntity } from './role.entity.js';
 
 @Entity({ name: 'account_roles' })
-@Unique(
-  'uq_account_roles_account_id_role_id',
-  ['accountId', 'roleId'],
-)
+@Unique('uq_account_roles_account_id_role_id', ['accountId', 'roleId'])
 @Index('ix_account_roles_role_id', ['roleId'])
 export class AccountRoleEntity {
   @PrimaryGeneratedColumn('uuid')
@@ -39,6 +36,7 @@ export class AccountRoleEntity {
   })
   @JoinColumn({
     name: 'account_id',
+    foreignKeyConstraintName: 'fk_account_roles_account_id',
   })
   account!: AccountEntity;
 
@@ -47,6 +45,7 @@ export class AccountRoleEntity {
   })
   @JoinColumn({
     name: 'role_id',
+    foreignKeyConstraintName: 'fk_account_roles_role_id',
   })
   role!: RoleEntity;
 

@@ -19,11 +19,10 @@
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
-    "migration:generate": "typeorm-ts-node-esm migration:generate",
-    "migration:show": "typeorm-ts-node-esm migration:show -d src/database/typeorm/data-source.ts",
-    "migration:run": "typeorm-ts-node-esm migration:run -d src/database/typeorm/data-source.ts",
-    "migration:revert": "typeorm-ts-node-esm migration:revert -d src/database/typeorm/data-source.ts",
-    "migration:show:prod": "typeorm migration:show -d dist/database/typeorm/data-source.js",
+    "migration:generate": "npm run build && typeorm migration:generate -d dist/database/data-source.js",
+    "migration:show": "npm run build && typeorm migration:show -d dist/database/data-source.js",
+    "migration:run": "npm run build && typeorm migration:run -d dist/database/data-source.js",
+    "migration:revert": "npm run build && typeorm migration:revert -d dist/database/data-source.js",
     "migration:cli:smoke": "node scripts/verify-typeorm-cli.mjs"
   },
   "dependencies": {
@@ -54,7 +53,6 @@
     "globals": "17.13.0",
     "prettier": "3.9.9",
     "supertest": "7.3.1",
-    "ts-node": "10.9.2",
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.1",
     "vitest": "5.0.3"

@@ -9,7 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-import { AccountStatus } from '../types/account-status.js';
+import { AccountStatus } from '../../modules/account/types/account-status.js';
 
 @Entity({ name: 'accounts' })
 @Check('ck_accounts_email_canonical', 'email = lower(btrim(email))')
