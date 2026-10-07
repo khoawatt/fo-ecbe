@@ -156,10 +156,16 @@ src/
 │   └── utils/
 │
 ├── database/
+│   ├── data-source.ts
+│   ├── entities/
+│   │   ├── account.entity.ts
+│   │   ├── account-role.entity.ts
+│   │   ├── permission.entity.ts
+│   │   ├── role.entity.ts
+│   │   └── role-permission.entity.ts
 │   ├── typeorm/
 │   │   ├── typeorm.module.ts
-│   │   ├── typeorm.config.ts
-│   │   └── data-source.ts
+│   │   └── typeorm.config.ts
 │   │
 │   ├── migrations/
 │   └── testing/
@@ -196,7 +202,6 @@ src/
     │   │   ├── create-account.data.ts
     │   │   └── update-account.data.ts
     │   ├── persistence/
-    │   │   ├── account.entity.ts
     │   │   └── account.repository.ts
     │   ├── account.tokens.ts
     │   └── types/

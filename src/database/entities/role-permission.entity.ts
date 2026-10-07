@@ -9,14 +9,14 @@ import {
   Unique,
 } from 'typeorm';
 
-import { PermissionEntity } from './permission.entity';
-import { RoleEntity } from './role.entity';
+import { PermissionEntity } from './permission.entity.js';
+import { RoleEntity } from './role.entity.js';
 
 @Entity({ name: 'role_permissions' })
-@Unique(
-  'uq_role_permissions_role_id_permission_id',
-  ['roleId', 'permissionId'],
-)
+@Unique('uq_role_permissions_role_id_permission_id', [
+  'roleId',
+  'permissionId',
+])
 @Index('ix_role_permissions_permission_id', ['permissionId'])
 export class RolePermissionEntity {
   @PrimaryGeneratedColumn('uuid')
@@ -39,6 +39,7 @@ export class RolePermissionEntity {
   })
   @JoinColumn({
     name: 'role_id',
+    foreignKeyConstraintName: 'fk_role_permissions_role_id',
   })
   role!: RoleEntity;
 
@@ -47,6 +48,7 @@ export class RolePermissionEntity {
   })
   @JoinColumn({
     name: 'permission_id',
+    foreignKeyConstraintName: 'fk_role_permissions_permission_id',
   })
   permission!: PermissionEntity;
 

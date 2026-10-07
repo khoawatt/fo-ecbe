@@ -27,10 +27,14 @@ npm run test
 npm run build
 ```
 
-TypeORM uses its native ESM CLI wrapper. Supply the migration output path when generating:
+TypeORM runs against the compiled native ESM DataSource. Each migration command
+builds the project before invoking the CLI:
 
 ```bash
-npm run migration:generate -- src/database/migrations/MigrationName -d src/database/typeorm/data-source.ts
+npm run migration:generate -- src/database/migrations/MigrationName
+npm run migration:show
+npm run migration:run
+npm run migration:revert
 ```
 
 FO-002 establishes foundation only. Auth/Account migration belongs to FO-003.
