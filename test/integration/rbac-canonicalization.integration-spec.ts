@@ -263,15 +263,15 @@ describe('RBAC canonicalization migration (PostgreSQL)', () => {
 
     const schemaDiffQueries = await getTypeOrmSchemaDiff(schema);
     const destructiveQueries = schemaDiffQueries.filter(
-      query => /\\bDROP\\s+(?:INDEX|CONSTRAINT)\\b/i.test(query),
+      query => /\bDROP\s+(?:INDEX|CONSTRAINT)\b/i.test(query),
     );
     expect(
       destructiveQueries,
-      `Unexpected TypeORM schema-diff drops:\\n${destructiveQueries.join('\\n')}`,
+      `Unexpected TypeORM schema-diff drops:\n${destructiveQueries.join('\n')}`,
     ).toEqual([]);
     expect(
       schemaDiffQueries.some(
-        query => /CREATE\\s+UNIQUE\\s+INDEX[\\s\\S]*uq_roles_name_canonical/i.test(query),
+        query => /CREATE\s+UNIQUE\s+INDEX[\s\S]*uq_roles_name_canonical/i.test(query),
       ),
     ).toBe(false);
 
