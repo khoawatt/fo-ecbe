@@ -1,13 +1,15 @@
 import {
+  Check,
   Column,
   CreateDateColumn,
   Entity,
   Index,
   PrimaryGeneratedColumn,
-  UpdateDateColumn,
+  UpdateDateColumn
 } from 'typeorm';
 
 @Entity({ name: 'roles' })
+@Check('ck_roles_code_canonical', 'code = upper(btrim(code))')
 export class RoleEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -15,39 +17,39 @@ export class RoleEntity {
   @Index('uq_roles_code', { unique: true })
   @Column({
     type: 'varchar',
-    length: 50,
+    length: 50
   })
   code!: string;
 
   @Column({
     type: 'varchar',
-    length: 100,
+    length: 100
   })
   name!: string;
 
   @Column({
     type: 'varchar',
     length: 255,
-    nullable: true,
+    nullable: true
   })
   description!: string | null;
 
   @Column({
     name: 'is_system',
     type: 'boolean',
-    default: false,
+    default: false
   })
   isSystem!: boolean;
 
   @CreateDateColumn({
     name: 'created_at',
-    type: 'timestamptz',
+    type: 'timestamptz'
   })
   createdAt!: Date;
 
   @UpdateDateColumn({
     name: 'updated_at',
-    type: 'timestamptz',
+    type: 'timestamptz'
   })
   updatedAt!: Date;
 }
