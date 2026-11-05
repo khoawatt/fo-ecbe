@@ -1,13 +1,15 @@
 import {
+  Check,
   Column,
   CreateDateColumn,
   Entity,
   Index,
   PrimaryGeneratedColumn,
-  UpdateDateColumn,
+  UpdateDateColumn
 } from 'typeorm';
 
 @Entity({ name: 'permissions' })
+@Check('ck_permissions_code_canonical', 'code = lower(btrim(code))')
 export class PermissionEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -15,26 +17,26 @@ export class PermissionEntity {
   @Index('uq_permissions_code', { unique: true })
   @Column({
     type: 'varchar',
-    length: 100,
+    length: 100
   })
   code!: string;
 
   @Column({
     type: 'varchar',
     length: 255,
-    nullable: true,
+    nullable: true
   })
   description!: string | null;
 
   @CreateDateColumn({
     name: 'created_at',
-    type: 'timestamptz',
+    type: 'timestamptz'
   })
   createdAt!: Date;
 
   @UpdateDateColumn({
     name: 'updated_at',
-    type: 'timestamptz',
+    type: 'timestamptz'
   })
   updatedAt!: Date;
 }
