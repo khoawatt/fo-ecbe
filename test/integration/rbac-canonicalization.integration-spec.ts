@@ -13,7 +13,6 @@ import { CreateAccountRbacFoundation1791280000000 } from '../../src/database/mig
 import { AddRbacCanonicalization1793874600000 } from '../../src/database/migrations/1793874600000-AddRbacCanonicalization.js';
 
 type Row = { id?: string; name?: string; code?: string };
-type TypeOrmSchemaDiff = { queries: string[]; driverSchema?: string; foreignKeys: Array<{ tablePath: string; name: string; referencedTablePath: string; onDelete: string | undefined; onUpdate: string | undefined }>; databaseTableForeignKeys: Array<Record<string, unknown>>; foreignKeyComparisons: Array<Record<string, unknown>> };
 type CodeCase = { id: string; table: 'roles' | 'permissions'; value: string; name?: string; expected?: string; error?: string; seed?: boolean };
 
 async function inTransaction(q: QueryRunner, work: () => Promise<void>) {
@@ -64,7 +63,7 @@ async function schemaObjects(q: QueryRunner, schema: string) {
   return { constraints: constraints.map(row => row.name), indexes: indexes.map(row => row.name) };
 }
 
-async function getTypeOrmSchemaDiff(schema: string): Promise<TypeOrmSchemaDiff> {
+async function getTypeOrmSchemaDiff(schema: string): Promise<string[]> {
   const options = AppDataSource.options;
   if (options.type !== 'postgres') {
     throw new Error('RBAC schema-diff verification requires PostgreSQL');
@@ -90,103 +89,14 @@ async function getTypeOrmSchemaDiff(schema: string): Promise<TypeOrmSchemaDiff> 
 
   await schemaDataSource.initialize();
   try {
-    type SchemaBuilderInspector = {
-      log(): Promise<{ upQueries: Array<{ query: string }> }>;
-      dropOldForeignKeys(): Promise<void>;
-      tables: Array<{ foreignKeys: Array<{ name?: string; onDelete?: string; onUpdate?: string }> }>;
-      entityToSyncMetadatas: Array<{
-        foreignKeys: Array<{
-          name: string;
-          onDelete?: string;
-          onUpdate?: string;
-          referencedEntityMetadata: unknown;
-        }>;
-      }>;
-      getTablePath(target: unknown): string;
-    };
-    const builder = schemaDataSource.driver.createSchemaBuilder() as unknown as SchemaBuilderInspector;
-    const foreignKeyComparisons: Array<Record<string, unknown>> = [];
-    const originalDropOldForeignKeys = builder.dropOldForeignKeys.bind(builder);
-    builder.dropOldForeignKeys = async () => {
-      for (const metadata of builder.entityToSyncMetadatas) {
-        const table = builder.tables.find(
-          candidate => builder.getTablePath(candidate) === builder.getTablePath(metadata),
-        );
-        if (!table) continue;
-        for (const tableForeignKey of table.foreignKeys) {
-          const metadataForeignKey = metadata.foreignKeys.find(
-            candidate => candidate.name === tableForeignKey.name,
-          );
-          const databaseReferencedPath = builder.getTablePath(tableForeignKey);
-          const metadataReferencedPath = metadataForeignKey
-            ? builder.getTablePath(metadataForeignKey.referencedEntityMetadata)
-            : undefined;
-          foreignKeyComparisons.push({
-            tablePath: builder.getTablePath(table),
-            name: tableForeignKey.name,
-            metadataFoundByName: Boolean(metadataForeignKey),
-            databaseReferencedPath,
-            metadataReferencedPath,
-            referencedPathMatches: databaseReferencedPath === metadataReferencedPath,
-            databaseOnDelete: tableForeignKey.onDelete,
-            metadataOnDelete: metadataForeignKey?.onDelete,
-            databaseOnUpdate: tableForeignKey.onUpdate,
-            metadataOnUpdate: metadataForeignKey?.onUpdate,
-          });
-        }
-      }
-      await originalDropOldForeignKeys();
-    };
-    const diff = await builder.log();
-    const foreignKeys = schemaDataSource.entityMetadatas.flatMap(metadata =>
-      metadata.foreignKeys.map(foreignKey => ({
-        tablePath: metadata.tablePath,
-        name: foreignKey.name,
-        referencedTablePath: foreignKey.referencedEntityMetadata.tablePath,
-        onDelete: foreignKey.onDelete,
-        onUpdate: foreignKey.onUpdate,
-      })),
-    );
-    const queryRunner = schemaDataSource.createQueryRunner();
-    await queryRunner.connect();
-    let databaseTableForeignKeys: Array<Record<string, unknown>> = [];
-    try {
-      const tables = await queryRunner.getTables(
-        schemaDataSource.entityMetadatas.map(metadata => metadata.tablePath),
-      );
-      databaseTableForeignKeys = tables.flatMap(table =>
-        table.foreignKeys.map(foreignKey => {
-          const parsed = schemaDataSource.driver.parseTableName(foreignKey);
-          return {
-            table: table.name,
-            name: foreignKey.name,
-            referencedSchema: foreignKey.referencedSchema,
-            referencedTableName: foreignKey.referencedTableName,
-            parsed,
-            normalizedReferencedPath: schemaDataSource.driver.buildTableName(
-              parsed.tableName,
-              parsed.schema,
-              parsed.database,
-            ),
-            onDelete: foreignKey.onDelete,
-            onUpdate: foreignKey.onUpdate,
-          };
-        }),
-      );
-    } finally {
-      await queryRunner.release();
-    }
-    return {
-      queries: diff.upQueries.map(query => query.query),
-      driverSchema: schemaDataSource.driver.schema,
-      foreignKeys,
-      databaseTableForeignKeys,
-      foreignKeyComparisons,
-    };
+    // TypeORM 1.1.1 migration:generate uses this same schema-builder log path.
+    const diff = await schemaDataSource.driver.createSchemaBuilder().log();
+    return diff.upQueries.map(query => query.query);
   } finally {
     await schemaDataSource.destroy();
   }
 }
+
 function expectCanonicalObjects(found: { constraints: string[]; indexes: string[] }) {
   for (const name of [
     'ck_roles_code_canonical',
@@ -351,25 +261,17 @@ describe('RBAC canonicalization migration (PostgreSQL)', () => {
     expect(index[0]?.expression).toContain('lower(btrim(');
     expect(index[0]?.expression).toContain('name');
 
-    const schemaDiff = await getTypeOrmSchemaDiff(schema);
-    const schemaDiffQueries = schemaDiff.queries;
-    const databaseForeignKeys = await q.query(
-      `SELECT conname AS name, conrelid::regclass::text AS table_path,
-              confrelid::regclass::text AS referenced_table_path,
-              pg_get_constraintdef(oid) AS definition
-       FROM pg_constraint
-       WHERE contype = 'f'
-         AND connamespace = (SELECT oid FROM pg_namespace WHERE nspname = $1)
-       ORDER BY conname`,
-      [schema],
-    );
+    const schemaDiffQueries = await getTypeOrmSchemaDiff(schema);
     const destructiveQueries = schemaDiffQueries.filter(
-      query => /\bDROP\s+(?:INDEX|CONSTRAINT)\b/i.test(query),
+      query => /\\bDROP\\s+(?:INDEX|CONSTRAINT)\\b/i.test(query),
     );
-    expect(destructiveQueries, JSON.stringify({ destructiveQueries, driverSchema: schemaDiff.driverSchema, metadataForeignKeys: schemaDiff.foreignKeys, databaseTableForeignKeys: schemaDiff.databaseTableForeignKeys, foreignKeyComparisons: schemaDiff.foreignKeyComparisons, databaseForeignKeys }, null, 2)).toEqual([]);
+    expect(
+      destructiveQueries,
+      `Unexpected TypeORM schema-diff drops:\\n${destructiveQueries.join('\\n')}`,
+    ).toEqual([]);
     expect(
       schemaDiffQueries.some(
-        query => /CREATE\s+UNIQUE\s+INDEX[\s\S]*uq_roles_name_canonical/i.test(query),
+        query => /CREATE\\s+UNIQUE\\s+INDEX[\\s\\S]*uq_roles_name_canonical/i.test(query),
       ),
     ).toBe(false);
 
