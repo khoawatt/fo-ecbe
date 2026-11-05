@@ -7,7 +7,6 @@ const count = (value: unknown): number => Number(value ?? 0);
 
 export class AddRbacCanonicalization1793874600000 implements MigrationInterface {
   name = 'AddRbacCanonicalization1793874600000';
-  transaction = true;
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Lock out concurrent writes while the read-only preflight and DDL run in this transaction.
