@@ -96,10 +96,40 @@ async function getTypeOrmSchemaDiff(schema: string): Promise<TypeOrmSchemaDiff> 
         onUpdate: foreignKey.onUpdate,
       })),
     );
+    const queryRunner = schemaDataSource.createQueryRunner();
+    await queryRunner.connect();
+    let databaseTableForeignKeys: Array<Record<string, unknown>> = [];
+    try {
+      const tables = await queryRunner.getTables(
+        schemaDataSource.entityMetadatas.map(metadata => metadata.tablePath),
+      );
+      databaseTableForeignKeys = tables.flatMap(table =>
+        table.foreignKeys.map(foreignKey => {
+          const parsed = schemaDataSource.driver.parseTableName(foreignKey);
+          return {
+            table: table.name,
+            name: foreignKey.name,
+            referencedSchema: foreignKey.referencedSchema,
+            referencedTableName: foreignKey.referencedTableName,
+            parsed,
+            normalizedReferencedPath: schemaDataSource.driver.buildTableName(
+              parsed.tableName,
+              parsed.schema,
+              parsed.database,
+            ),
+            onDelete: foreignKey.onDelete,
+            onUpdate: foreignKey.onUpdate,
+          };
+        }),
+      );
+    } finally {
+      await queryRunner.release();
+    }
     return {
       queries: diff.upQueries.map(query => query.query),
       driverSchema: schemaDataSource.driver.schema,
       foreignKeys,
+      databaseTableForeignKeys,
     };
   } finally {
     await schemaDataSource.destroy();
@@ -284,7 +314,7 @@ describe('RBAC canonicalization migration (PostgreSQL)', () => {
     const destructiveQueries = schemaDiffQueries.filter(
       query => /\bDROP\s+(?:INDEX|CONSTRAINT)\b/i.test(query),
     );
-    expect(destructiveQueries, JSON.stringify({ destructiveQueries, driverSchema: schemaDiff.driverSchema, metadataForeignKeys: schemaDiff.foreignKeys, databaseForeignKeys }, null, 2)).toEqual([]);
+    expect(destructiveQueries, JSON.stringify({ destructiveQueries, driverSchema: schemaDiff.driverSchema, metadataForeignKeys: schemaDiff.foreignKeys, databaseTableForeignKeys: schemaDiff.databaseTableForeignKeys, databaseForeignKeys }, null, 2)).toEqual([]);
     expect(
       schemaDiffQueries.some(
         query => /CREATE\s+UNIQUE\s+INDEX[\s\S]*uq_roles_name_canonical/i.test(query),
