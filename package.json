@@ -14,6 +14,7 @@
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main.js",
     "typecheck": "tsc --noEmit",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"scripts/**/*.mjs\" \"*.json\"",
     "lint": "eslint \"{src,test}/**/*.ts\" --max-warnings=0",
     "test": "npm run test:unit && npm run test:integration && npm run test:e2e",
     "test:unit": "vitest run --config vitest.unit.config.ts",
