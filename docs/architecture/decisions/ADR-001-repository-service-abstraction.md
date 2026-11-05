@@ -72,6 +72,14 @@ TypeORM Repository<AccountEntity>
 PostgreSQL
 ```
 
+### Visual reference — Repository Pattern (Account example)
+
+The following diagram illustrates the **target architecture** described in this ADR, including generic service/repository interfaces, abstract base classes, concrete Account components, dependency injection, and the request/data flow. It is a design reference, not a claim that every target component is already implemented.
+
+[![FO-ECBE Repository Pattern — Account architecture diagram](https://drive.google.com/thumbnail?id=1UYxPqw8P7I8XEeFXRM2bYS8-RQV6SirF&sz=w1600)](https://drive.google.com/file/d/1UYxPqw8P7I8XEeFXRM2bYS8-RQV6SirF/view)
+
+*Click the diagram to open the full-size PNG stored in the [Diagrams folder on Google Drive](https://drive.google.com/drive/folders/1bQk1YxB6CCG6xrSveMWNYsOnt5cro-s5).*
+
 The following components are retained:
 
 ```text
