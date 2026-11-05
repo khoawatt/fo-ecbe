@@ -13,7 +13,7 @@ import { CreateAccountRbacFoundation1791280000000 } from '../../src/database/mig
 import { AddRbacCanonicalization1793874600000 } from '../../src/database/migrations/1793874600000-AddRbacCanonicalization.js';
 
 type Row = { id?: string; name?: string; code?: string };
-type TypeOrmSchemaDiff = { queries: string[]; driverSchema?: string; foreignKeys: Array<{ tablePath: string; name: string; referencedTablePath: string; onDelete: string | undefined; onUpdate: string | undefined }> };
+type TypeOrmSchemaDiff = { queries: string[]; driverSchema?: string; foreignKeys: Array<{ tablePath: string; name: string; referencedTablePath: string; onDelete: string | undefined; onUpdate: string | undefined }>; databaseTableForeignKeys: Array<Record<string, unknown>> };
 type CodeCase = { id: string; table: 'roles' | 'permissions'; value: string; name?: string; expected?: string; error?: string; seed?: boolean };
 
 async function inTransaction(q: QueryRunner, work: () => Promise<void>) {
