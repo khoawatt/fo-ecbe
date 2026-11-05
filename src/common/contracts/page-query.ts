@@ -1,1 +1,4 @@
-export interface PageQuery { page?:number; limit?:number; }
+export interface PageQuery {
+  page?: number;
+  limit?: number;
+}
