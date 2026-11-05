@@ -63,7 +63,7 @@ async function schemaObjects(q: QueryRunner, schema: string) {
   return { constraints: constraints.map(row => row.name), indexes: indexes.map(row => row.name) };
 }
 
-async function getTypeOrmSchemaDiff(schema: string): Promise<string[]> {
+async function getTypeOrmSchemaDiff(schema: string) {
   const options = AppDataSource.options;
   if (options.type !== 'postgres') {
     throw new Error('RBAC schema-diff verification requires PostgreSQL');
@@ -74,7 +74,7 @@ async function getTypeOrmSchemaDiff(schema: string): Promise<string[]> {
     ...postgresOptions,
     extra: {
       ...(postgresOptions.extra ?? {}),
-      options: `-c search_path="${schema}",public`,
+      options: \`-c search_path="\${schema}",public\`,
     },
     entities: [
       AccountEntity,
@@ -89,24 +89,50 @@ async function getTypeOrmSchemaDiff(schema: string): Promise<string[]> {
 
   await schemaDataSource.initialize();
   try {
-    // TypeORM 1.1.1 migration:generate uses this same schema-builder log path.
-    const diff = await schemaDataSource.driver.createSchemaBuilder().log();
-    return diff.upQueries.map(query => query.query);
+    const [connection] = await schemaDataSource.query(
+      'SELECT current_schema() AS current_schema, current_schemas(false) AS current_schemas',
+    ) as Array<{ current_schema: string | null; current_schemas: string[] }>;
+
+    // Confirm the schema-builder DataSource resolves unqualified tables in the isolated schema.
+    if (connection?.current_schema !== schema || connection.current_schema === 'public') {
+      throw new Error(
+        \`TypeORM schema-diff DataSource connected to "\${connection?.current_schema}", expected isolated schema "\${schema}". Search path: \${JSON.stringify(connection?.current_schemas)}\`,
+      );
+    }
+
+    const schemaDiff = await schemaDataSource.driver.createSchemaBuilder().log();
+    return {
+      connectedSchema: connection.current_schema,
+      currentSchemas: connection.current_schemas,
+      schemaDiff,
+    };
   } finally {
     await schemaDataSource.destroy();
   }
 }
 
-function expectCanonicalObjects(found: { constraints: string[]; indexes: string[] }) {
+function expectFoundationRbacObjects(found: { constraints: string[]; indexes: string[] }) {
   for (const name of [
-    'ck_roles_code_canonical',
-    'ck_permissions_code_canonical',
+    'uq_roles_code',
+    'uq_permissions_code',
+    'ix_account_roles_role_id',
+    'ix_role_permissions_permission_id',
+    'uq_account_roles_account_id_role_id',
+    'uq_role_permissions_role_id_permission_id',
+  ]) expect(found.indexes).toContain(name);
+
+  for (const name of [
     'uq_account_roles_account_id_role_id',
     'uq_role_permissions_role_id_permission_id',
   ]) expect(found.constraints).toContain(name);
-  for (const name of ['uq_roles_code', 'uq_permissions_code', 'uq_roles_name_canonical']) {
-    expect(found.indexes).toContain(name);
+}
+
+function expectCanonicalObjects(found: { constraints: string[]; indexes: string[] }) {
+  expectFoundationRbacObjects(found);
+  for (const name of ['ck_roles_code_canonical', 'ck_permissions_code_canonical']) {
+    expect(found.constraints).toContain(name);
   }
+  expect(found.indexes).toContain('uq_roles_name_canonical');
 }
 
 beforeAll(async () => { if (!AppDataSource.isInitialized) await AppDataSource.initialize(); }, 30_000);
@@ -214,18 +240,34 @@ describe('RBAC canonicalization migration (PostgreSQL)', () => {
     expect(found.indexes).toContain('uq_permissions_code');
   }, false));
   it('RBAC-17 down removes only objects introduced by this migration', async () => withSchema(async (q, schema) => {
+    const beforeDown = await schemaObjects(q, schema);
+    expectCanonicalObjects(beforeDown);
+
     await migrateDown(q);
-    const found = await schemaObjects(q, schema);
-    expect(found.constraints).not.toContain('ck_roles_code_canonical');
-    expect(found.constraints).not.toContain('ck_permissions_code_canonical');
-    expect(found.indexes).not.toContain('uq_roles_name_canonical');
-    expect(found.indexes).toContain('uq_roles_code');
-    expect(found.indexes).toContain('uq_permissions_code');
-    expect(found.constraints).toContain('uq_account_roles_account_id_role_id');
-    expect(found.constraints).toContain('uq_role_permissions_role_id_permission_id');
+
+    const afterDown = await schemaObjects(q, schema);
+    expectFoundationRbacObjects(afterDown);
+    expect(afterDown.constraints).not.toContain('ck_roles_code_canonical');
+    expect(afterDown.constraints).not.toContain('ck_permissions_code_canonical');
+    expect(afterDown.indexes).not.toContain('uq_roles_name_canonical');
+
+    const expectedIndexes = beforeDown.indexes
+      .filter(name => name !== 'uq_roles_name_canonical')
+      .sort();
+    const expectedConstraints = beforeDown.constraints
+      .filter(name => !['ck_roles_code_canonical', 'ck_permissions_code_canonical'].includes(name))
+      .sort();
+    expect([...afterDown.indexes].sort()).toEqual(expectedIndexes);
+    expect([...afterDown.constraints].sort()).toEqual(expectedConstraints);
   }));
   it('RBAC-18 reapplies successfully after down()', async () => withSchema(async (q, schema) => {
     await migrateDown(q);
+    const afterDown = await schemaObjects(q, schema);
+    expectFoundationRbacObjects(afterDown);
+    expect(afterDown.constraints).not.toContain('ck_roles_code_canonical');
+    expect(afterDown.constraints).not.toContain('ck_permissions_code_canonical');
+    expect(afterDown.indexes).not.toContain('uq_roles_name_canonical');
+
     await migrateUp(q);
     expectCanonicalObjects(await schemaObjects(q, schema));
   }));
@@ -235,6 +277,8 @@ describe('RBAC canonicalization migration (PostgreSQL)', () => {
     expect(metadata.checks.some(x => x.target === PermissionEntity && x.name === 'ck_permissions_code_canonical')).toBe(true);
     expect(metadata.indices.some(x => x.target === RoleEntity && x.name === 'uq_roles_code')).toBe(true);
     expect(metadata.indices.some(x => x.target === PermissionEntity && x.name === 'uq_permissions_code')).toBe(true);
+    expect(metadata.indices.some(x => x.target === AccountRoleEntity && x.name === 'ix_account_roles_role_id')).toBe(true);
+    expect(metadata.indices.some(x => x.target === RolePermissionEntity && x.name === 'ix_role_permissions_permission_id')).toBe(true);
     expect(metadata.uniques.some(x => x.target === AccountRoleEntity && x.name === 'uq_account_roles_account_id_role_id')).toBe(true);
     expect(metadata.uniques.some(x => x.target === RolePermissionEntity && x.name === 'uq_role_permissions_role_id_permission_id')).toBe(true);
 
@@ -261,19 +305,33 @@ describe('RBAC canonicalization migration (PostgreSQL)', () => {
     expect(index[0]?.expression).toContain('lower(btrim(');
     expect(index[0]?.expression).toContain('name');
 
-    const schemaDiffQueries = await getTypeOrmSchemaDiff(schema);
-    const destructiveQueries = schemaDiffQueries.filter(
-      query => /\bDROP\s+(?:INDEX|CONSTRAINT)\b/i.test(query),
+    const { connectedSchema, currentSchemas, schemaDiff } = await getTypeOrmSchemaDiff(schema);
+    expect(connectedSchema).toBe(schema);
+    expect(connectedSchema).not.toBe('public');
+    expect(currentSchemas).toContain(schema);
+    expect(currentSchemas[0]).toBe(schema);
+
+    const generatedSql = schemaDiff.upQueries.map(query =>
+      query.parameters?.length
+        ? \`\${query.query}\n-- parameters: \${JSON.stringify(query.parameters)}\`
+        : query.query,
     );
+    const generatedSchemaOperations = generatedSql.filter(
+      sql => /^\s*(?:CREATE|ALTER|DROP)\b/i.test(sql),
+    );
+
     expect(
-      destructiveQueries,
-      `Unexpected TypeORM schema-diff drops:\n${destructiveQueries.join('\n')}`,
+      generatedSchemaOperations,
+      \`Unexpected CREATE/ALTER/DROP SQL from TypeORM schema diff:\n\${generatedSql.join('\n') || '(none)'}\`,
     ).toEqual([]);
     expect(
-      schemaDiffQueries.some(
-        query => /CREATE\s+UNIQUE\s+INDEX[\s\S]*uq_roles_name_canonical/i.test(query),
-      ),
-    ).toBe(false);
+      schemaDiff.upQueries,
+      \`TypeORM schemaDiff.upQueries must be empty for a migrated schema:\n\${generatedSql.join('\n') || '(none)'}\`,
+    ).toHaveLength(0);
+    expect(
+      schemaDiff.downQueries,
+      \`TypeORM schemaDiff.downQueries must also be empty:\n\${schemaDiff.downQueries.map(query => query.query).join('\n') || '(none)'}\`,
+    ).toHaveLength(0);
 
     expectCanonicalObjects(await schemaObjects(q, schema));
   }));

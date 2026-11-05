@@ -41,6 +41,8 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test
+      - name: Repeat full test suite
+        run: npm run test
       - run: npm run migration:show
       - run: npm run migration:cli:smoke
       - run: npm run migration:run
