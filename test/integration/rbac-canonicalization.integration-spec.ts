@@ -1,9 +1,10 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { getMetadataArgsStorage } from 'typeorm';
+import { DataSource, getMetadataArgsStorage } from 'typeorm';
 import type { QueryRunner } from 'typeorm';
 import { AccountRoleEntity } from '../../src/database/entities/account-role.entity.js';
+import { AccountEntity } from '../../src/database/entities/account.entity.js';
 import { PermissionEntity } from '../../src/database/entities/permission.entity.js';
 import { RolePermissionEntity } from '../../src/database/entities/role-permission.entity.js';
 import { RoleEntity } from '../../src/database/entities/role.entity.js';
@@ -60,6 +61,30 @@ async function schemaObjects(q: QueryRunner, schema: string) {
     [schema],
   ) as Array<{ name: string }>;
   return { constraints: constraints.map(row => row.name), indexes: indexes.map(row => row.name) };
+}
+
+async function getTypeOrmSchemaDiff(schema: string): Promise<string[]> {
+  const schemaDataSource = new DataSource({
+    ...AppDataSource.options,
+    schema,
+    entities: [
+      AccountEntity,
+      AccountRoleEntity,
+      PermissionEntity,
+      RoleEntity,
+      RolePermissionEntity,
+    ],
+    migrations: [],
+    synchronize: false,
+  });
+
+  await schemaDataSource.initialize();
+  try {
+    const diff = await schemaDataSource.driver.createSchemaBuilder().log();
+    return diff.upQueries.map(query => query.query);
+  } finally {
+    await schemaDataSource.destroy();
+  }
 }
 function expectCanonicalObjects(found: { constraints: string[]; indexes: string[] }) {
   for (const name of [
@@ -193,7 +218,7 @@ describe('RBAC canonicalization migration (PostgreSQL)', () => {
     await migrateUp(q);
     expectCanonicalObjects(await schemaObjects(q, schema));
   }));
-  it('RBAC-19 aligns TypeORM metadata and migration-owned expression index', async () => withSchema(async (q, schema) => {
+  it('RBAC-19 verifies TypeORM metadata and a non-destructive schema diff', async () => withSchema(async (q, schema) => {
     const metadata = getMetadataArgsStorage();
     expect(metadata.checks.some(x => x.target === RoleEntity && x.name === 'ck_roles_code_canonical')).toBe(true);
     expect(metadata.checks.some(x => x.target === PermissionEntity && x.name === 'ck_permissions_code_canonical')).toBe(true);
@@ -201,15 +226,41 @@ describe('RBAC canonicalization migration (PostgreSQL)', () => {
     expect(metadata.indices.some(x => x.target === PermissionEntity && x.name === 'uq_permissions_code')).toBe(true);
     expect(metadata.uniques.some(x => x.target === AccountRoleEntity && x.name === 'uq_account_roles_account_id_role_id')).toBe(true);
     expect(metadata.uniques.some(x => x.target === RolePermissionEntity && x.name === 'uq_role_permissions_role_id_permission_id')).toBe(true);
-    expect(metadata.indices.some(x => x.target === RoleEntity && x.name === 'uq_roles_name_canonical')).toBe(false);
+
+    const roleNameIndexMetadata = metadata.indices.find(
+      x => x.target === RoleEntity && x.name === 'uq_roles_name_canonical',
+    );
+    expect(roleNameIndexMetadata).toBeDefined();
+    expect(roleNameIndexMetadata?.synchronize).toBe(false);
     expect(AppDataSource.options.synchronize).toBe(false);
+
     const index = await q.query(
-      "SELECT indexdef FROM pg_indexes WHERE schemaname = $1 AND indexname = 'uq_roles_name_canonical'",
+      `SELECT
+         pg_get_indexdef(index_data.indexrelid) AS indexdef,
+         pg_get_expr(index_data.indexprs, index_data.indrelid) AS expression
+       FROM pg_index AS index_data
+       JOIN pg_class AS index_class ON index_class.oid = index_data.indexrelid
+       JOIN pg_namespace AS index_schema ON index_schema.oid = index_class.relnamespace
+       WHERE index_schema.nspname = $1
+         AND index_class.relname = 'uq_roles_name_canonical'`,
       [schema],
-    ) as Array<{ indexdef: string }>;
+    ) as Array<{ indexdef: string; expression: string }>;
     expect(index).toHaveLength(1);
-    expect(index[0]?.indexdef).toContain('lower(btrim(');
-    expect(index[0]?.indexdef).toContain('name');
+    expect(index[0]?.indexdef).toMatch(/^CREATE UNIQUE INDEX/i);
+    expect(index[0]?.expression).toContain('lower(btrim(');
+    expect(index[0]?.expression).toContain('name');
+
+    const schemaDiffQueries = await getTypeOrmSchemaDiff(schema);
+    const destructiveQueries = schemaDiffQueries.filter(
+      query => /\bDROP\s+(?:INDEX|CONSTRAINT)\b/i.test(query),
+    );
+    expect(destructiveQueries, destructiveQueries.join('\n')).toEqual([]);
+    expect(
+      schemaDiffQueries.some(
+        query => /CREATE\s+UNIQUE\s+INDEX[\s\S]*uq_roles_name_canonical/i.test(query),
+      ),
+    ).toBe(false);
+
     expectCanonicalObjects(await schemaObjects(q, schema));
   }));
   it('RBAC-20 preserves AccountRole and RolePermission grants across migration', async () => withSchema(async q => {

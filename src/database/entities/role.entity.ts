@@ -10,6 +10,7 @@ import {
 
 @Entity({ name: 'roles' })
 @Check('ck_roles_code_canonical', 'code = upper(btrim(code))')
+@Index('uq_roles_name_canonical', { synchronize: false })
 export class RoleEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
