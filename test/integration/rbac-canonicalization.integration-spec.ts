@@ -64,8 +64,13 @@ async function schemaObjects(q: QueryRunner, schema: string) {
 }
 
 async function getTypeOrmSchemaDiff(schema: string): Promise<string[]> {
+  const options = AppDataSource.options;
+  if (options.type !== 'postgres') {
+    throw new Error('RBAC schema-diff verification requires PostgreSQL');
+  }
+
   const schemaDataSource = new DataSource({
-    ...AppDataSource.options,
+    ...options,
     schema,
     entities: [
       AccountEntity,
