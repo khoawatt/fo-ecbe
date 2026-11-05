@@ -70,9 +70,13 @@ async function getTypeOrmSchemaDiff(schema: string): Promise<TypeOrmSchemaDiff> 
     throw new Error('RBAC schema-diff verification requires PostgreSQL');
   }
 
+  const { schema: _configuredSchema, ...postgresOptions } = options;
   const schemaDataSource = new DataSource({
-    ...options,
-    schema,
+    ...postgresOptions,
+    extra: {
+      ...(postgresOptions.extra ?? {}),
+      options: `-c search_path="${schema}",public`,
+    },
     entities: [
       AccountEntity,
       AccountRoleEntity,
