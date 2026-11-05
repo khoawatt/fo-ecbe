@@ -74,7 +74,7 @@ async function getTypeOrmSchemaDiff(schema: string) {
     ...postgresOptions,
     extra: {
       ...(postgresOptions.extra ?? {}),
-      options: \`-c search_path="\${schema}",public\`,
+      options: `-c search_path="${schema}",public`,
     },
     entities: [
       AccountEntity,
@@ -96,7 +96,7 @@ async function getTypeOrmSchemaDiff(schema: string) {
     // Confirm the schema-builder DataSource resolves unqualified tables in the isolated schema.
     if (connection?.current_schema !== schema || connection.current_schema === 'public') {
       throw new Error(
-        \`TypeORM schema-diff DataSource connected to "\${connection?.current_schema}", expected isolated schema "\${schema}". Search path: \${JSON.stringify(connection?.current_schemas)}\`,
+        `TypeORM schema-diff DataSource connected to "${connection?.current_schema}", expected isolated schema "${schema}". Search path: ${JSON.stringify(connection?.current_schemas)}`,
       );
     }
 
@@ -313,7 +313,7 @@ describe('RBAC canonicalization migration (PostgreSQL)', () => {
 
     const generatedSql = schemaDiff.upQueries.map(query =>
       query.parameters?.length
-        ? \`\${query.query}\n-- parameters: \${JSON.stringify(query.parameters)}\`
+        ? `${query.query}\n-- parameters: ${JSON.stringify(query.parameters)}`
         : query.query,
     );
     const generatedSchemaOperations = generatedSql.filter(
@@ -322,15 +322,15 @@ describe('RBAC canonicalization migration (PostgreSQL)', () => {
 
     expect(
       generatedSchemaOperations,
-      \`Unexpected CREATE/ALTER/DROP SQL from TypeORM schema diff:\n\${generatedSql.join('\n') || '(none)'}\`,
+      `Unexpected CREATE/ALTER/DROP SQL from TypeORM schema diff:\n${generatedSql.join('\n') || '(none)'}`,
     ).toEqual([]);
     expect(
       schemaDiff.upQueries,
-      \`TypeORM schemaDiff.upQueries must be empty for a migrated schema:\n\${generatedSql.join('\n') || '(none)'}\`,
+      `TypeORM schemaDiff.upQueries must be empty for a migrated schema:\n${generatedSql.join('\n') || '(none)'}`,
     ).toHaveLength(0);
     expect(
       schemaDiff.downQueries,
-      \`TypeORM schemaDiff.downQueries must also be empty:\n\${schemaDiff.downQueries.map(query => query.query).join('\n') || '(none)'}\`,
+      `TypeORM schemaDiff.downQueries must also be empty:\n${schemaDiff.downQueries.map(query => query.query).join('\n') || '(none)'}`,
     ).toHaveLength(0);
 
     expectCanonicalObjects(await schemaObjects(q, schema));
