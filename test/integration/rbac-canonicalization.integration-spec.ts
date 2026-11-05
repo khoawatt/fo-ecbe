@@ -13,6 +13,7 @@ import { CreateAccountRbacFoundation1791280000000 } from '../../src/database/mig
 import { AddRbacCanonicalization1793874600000 } from '../../src/database/migrations/1793874600000-AddRbacCanonicalization.js';
 
 type Row = { id?: string; name?: string; code?: string };
+type TypeOrmSchemaDiff = { queries: string[]; driverSchema?: string; foreignKeys: Array<{ tablePath: string; name: string; referencedTablePath: string; onDelete: string | undefined; onUpdate: string | undefined }> };
 type CodeCase = { id: string; table: 'roles' | 'permissions'; value: string; name?: string; expected?: string; error?: string; seed?: boolean };
 
 async function inTransaction(q: QueryRunner, work: () => Promise<void>) {
@@ -63,7 +64,7 @@ async function schemaObjects(q: QueryRunner, schema: string) {
   return { constraints: constraints.map(row => row.name), indexes: indexes.map(row => row.name) };
 }
 
-async function getTypeOrmSchemaDiff(schema: string): Promise<string[]> {
+async function getTypeOrmSchemaDiff(schema: string): Promise<TypeOrmSchemaDiff> {
   const options = AppDataSource.options;
   if (options.type !== 'postgres') {
     throw new Error('RBAC schema-diff verification requires PostgreSQL');
@@ -86,7 +87,20 @@ async function getTypeOrmSchemaDiff(schema: string): Promise<string[]> {
   await schemaDataSource.initialize();
   try {
     const diff = await schemaDataSource.driver.createSchemaBuilder().log();
-    return diff.upQueries.map(query => query.query);
+    const foreignKeys = schemaDataSource.entityMetadatas.flatMap(metadata =>
+      metadata.foreignKeys.map(foreignKey => ({
+        tablePath: metadata.tablePath,
+        name: foreignKey.name,
+        referencedTablePath: foreignKey.referencedEntityMetadata.tablePath,
+        onDelete: foreignKey.onDelete,
+        onUpdate: foreignKey.onUpdate,
+      })),
+    );
+    return {
+      queries: diff.upQueries.map(query => query.query),
+      driverSchema: schemaDataSource.driver.schema,
+      foreignKeys,
+    };
   } finally {
     await schemaDataSource.destroy();
   }
@@ -255,11 +269,22 @@ describe('RBAC canonicalization migration (PostgreSQL)', () => {
     expect(index[0]?.expression).toContain('lower(btrim(');
     expect(index[0]?.expression).toContain('name');
 
-    const schemaDiffQueries = await getTypeOrmSchemaDiff(schema);
+    const schemaDiff = await getTypeOrmSchemaDiff(schema);
+    const schemaDiffQueries = schemaDiff.queries;
+    const databaseForeignKeys = await q.query(
+      `SELECT conname AS name, conrelid::regclass::text AS table_path,
+              confrelid::regclass::text AS referenced_table_path,
+              pg_get_constraintdef(oid) AS definition
+       FROM pg_constraint
+       WHERE contype = 'f'
+         AND connamespace = (SELECT oid FROM pg_namespace WHERE nspname = $1)
+       ORDER BY conname`,
+      [schema],
+    );
     const destructiveQueries = schemaDiffQueries.filter(
       query => /\bDROP\s+(?:INDEX|CONSTRAINT)\b/i.test(query),
     );
-    expect(destructiveQueries, destructiveQueries.join('\n')).toEqual([]);
+    expect(destructiveQueries, JSON.stringify({ destructiveQueries, driverSchema: schemaDiff.driverSchema, metadataForeignKeys: schemaDiff.foreignKeys, databaseForeignKeys }, null, 2)).toEqual([]);
     expect(
       schemaDiffQueries.some(
         query => /CREATE\s+UNIQUE\s+INDEX[\s\S]*uq_roles_name_canonical/i.test(query),
