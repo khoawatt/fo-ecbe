@@ -90,7 +90,7 @@ async function getTypeOrmSchemaDiff(schema: string) {
   await schemaDataSource.initialize();
   try {
     const [connection] = await schemaDataSource.query(
-      'SELECT current_schema() AS current_schema, current_schemas(false) AS current_schemas',
+      'SELECT current_schema() AS current_schema, array_to_json(current_schemas(false)) AS current_schemas',
     ) as Array<{ current_schema: string | null; current_schemas: string[] }>;
 
     // Confirm the schema-builder DataSource resolves unqualified tables in the isolated schema.
