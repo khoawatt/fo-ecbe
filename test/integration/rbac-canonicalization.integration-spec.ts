@@ -13,7 +13,7 @@ import { CreateAccountRbacFoundation1791280000000 } from '../../src/database/mig
 import { AddRbacCanonicalization1793874600000 } from '../../src/database/migrations/1793874600000-AddRbacCanonicalization.js';
 
 type Row = { id?: string; name?: string; code?: string };
-type TypeOrmSchemaDiff = { queries: string[]; driverSchema?: string; foreignKeys: Array<{ tablePath: string; name: string; referencedTablePath: string; onDelete: string | undefined; onUpdate: string | undefined }>; databaseTableForeignKeys: Array<Record<string, unknown>> };
+type TypeOrmSchemaDiff = { queries: string[]; driverSchema?: string; foreignKeys: Array<{ tablePath: string; name: string; referencedTablePath: string; onDelete: string | undefined; onUpdate: string | undefined }>; databaseTableForeignKeys: Array<Record<string, unknown>>; foreignKeyComparisons: Array<Record<string, unknown>> };
 type CodeCase = { id: string; table: 'roles' | 'permissions'; value: string; name?: string; expected?: string; error?: string; seed?: boolean };
 
 async function inTransaction(q: QueryRunner, work: () => Promise<void>) {
@@ -86,7 +86,54 @@ async function getTypeOrmSchemaDiff(schema: string): Promise<TypeOrmSchemaDiff> 
 
   await schemaDataSource.initialize();
   try {
-    const diff = await schemaDataSource.driver.createSchemaBuilder().log();
+    type SchemaBuilderInspector = {
+      log(): Promise<{ upQueries: Array<{ query: string }> }>;
+      dropOldForeignKeys(): Promise<void>;
+      tables: Array<{ foreignKeys: Array<{ name?: string; onDelete?: string; onUpdate?: string }> }>;
+      entityToSyncMetadatas: Array<{
+        foreignKeys: Array<{
+          name: string;
+          onDelete?: string;
+          onUpdate?: string;
+          referencedEntityMetadata: unknown;
+        }>;
+      }>;
+      getTablePath(target: unknown): string;
+    };
+    const builder = schemaDataSource.driver.createSchemaBuilder() as unknown as SchemaBuilderInspector;
+    const foreignKeyComparisons: Array<Record<string, unknown>> = [];
+    const originalDropOldForeignKeys = builder.dropOldForeignKeys.bind(builder);
+    builder.dropOldForeignKeys = async () => {
+      for (const metadata of builder.entityToSyncMetadatas) {
+        const table = builder.tables.find(
+          candidate => builder.getTablePath(candidate) === builder.getTablePath(metadata),
+        );
+        if (!table) continue;
+        for (const tableForeignKey of table.foreignKeys) {
+          const metadataForeignKey = metadata.foreignKeys.find(
+            candidate => candidate.name === tableForeignKey.name,
+          );
+          const databaseReferencedPath = builder.getTablePath(tableForeignKey);
+          const metadataReferencedPath = metadataForeignKey
+            ? builder.getTablePath(metadataForeignKey.referencedEntityMetadata)
+            : undefined;
+          foreignKeyComparisons.push({
+            tablePath: builder.getTablePath(table),
+            name: tableForeignKey.name,
+            metadataFoundByName: Boolean(metadataForeignKey),
+            databaseReferencedPath,
+            metadataReferencedPath,
+            referencedPathMatches: databaseReferencedPath === metadataReferencedPath,
+            databaseOnDelete: tableForeignKey.onDelete,
+            metadataOnDelete: metadataForeignKey?.onDelete,
+            databaseOnUpdate: tableForeignKey.onUpdate,
+            metadataOnUpdate: metadataForeignKey?.onUpdate,
+          });
+        }
+      }
+      await originalDropOldForeignKeys();
+    };
+    const diff = await builder.log();
     const foreignKeys = schemaDataSource.entityMetadatas.flatMap(metadata =>
       metadata.foreignKeys.map(foreignKey => ({
         tablePath: metadata.tablePath,
@@ -130,6 +177,7 @@ async function getTypeOrmSchemaDiff(schema: string): Promise<TypeOrmSchemaDiff> 
       driverSchema: schemaDataSource.driver.schema,
       foreignKeys,
       databaseTableForeignKeys,
+      foreignKeyComparisons,
     };
   } finally {
     await schemaDataSource.destroy();
@@ -314,7 +362,7 @@ describe('RBAC canonicalization migration (PostgreSQL)', () => {
     const destructiveQueries = schemaDiffQueries.filter(
       query => /\bDROP\s+(?:INDEX|CONSTRAINT)\b/i.test(query),
     );
-    expect(destructiveQueries, JSON.stringify({ destructiveQueries, driverSchema: schemaDiff.driverSchema, metadataForeignKeys: schemaDiff.foreignKeys, databaseTableForeignKeys: schemaDiff.databaseTableForeignKeys, databaseForeignKeys }, null, 2)).toEqual([]);
+    expect(destructiveQueries, JSON.stringify({ destructiveQueries, driverSchema: schemaDiff.driverSchema, metadataForeignKeys: schemaDiff.foreignKeys, databaseTableForeignKeys: schemaDiff.databaseTableForeignKeys, foreignKeyComparisons: schemaDiff.foreignKeyComparisons, databaseForeignKeys }, null, 2)).toEqual([]);
     expect(
       schemaDiffQueries.some(
         query => /CREATE\s+UNIQUE\s+INDEX[\s\S]*uq_roles_name_canonical/i.test(query),
