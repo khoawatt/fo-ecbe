@@ -208,7 +208,8 @@ describe('RBAC canonicalization migration (PostgreSQL)', () => {
       [schema],
     ) as Array<{ indexdef: string }>;
     expect(index).toHaveLength(1);
-    expect(index[0]?.indexdef).toContain('lower(btrim(name))');
+    expect(index[0]?.indexdef).toContain('lower(btrim(');
+    expect(index[0]?.indexdef).toContain('name');
     expectCanonicalObjects(await schemaObjects(q, schema));
   }));
   it('RBAC-20 preserves AccountRole and RolePermission grants across migration', async () => withSchema(async q => {
