@@ -23,13 +23,11 @@ export class RolePermissionEntity {
   id!: string;
 
   @Column({
-    name: 'role_id',
     type: 'uuid',
   })
   roleId!: string;
 
   @Column({
-    name: 'permission_id',
     type: 'uuid',
   })
   permissionId!: string;
@@ -53,7 +51,6 @@ export class RolePermissionEntity {
   permission!: PermissionEntity;
 
   @CreateDateColumn({
-    name: 'created_at',
     type: 'timestamptz',
   })
   createdAt!: Date;

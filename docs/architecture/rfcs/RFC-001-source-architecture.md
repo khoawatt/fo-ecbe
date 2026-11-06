@@ -122,6 +122,14 @@ Foundation
 
 No big-bang folder migration.
 
+### 2.5 Naming conventions
+
+- TypeScript, NestJS, entity properties, repositories, services, DTOs, and HTTP JSON use `camelCase`.
+- PostgreSQL tables, columns, indexes, and constraints use `snake_case`.
+- The TypeORM naming strategy owns the mapping from entity property names to database column names.
+- HTTP JSON remains `camelCase`; no global JSON naming transformation is used.
+- Explicit database contract names for tables, indexes, constraints, join columns, and foreign keys are preserved.
+
 ---
 
 ## 3. Target source tree

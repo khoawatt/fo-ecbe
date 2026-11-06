@@ -5,6 +5,7 @@ import { AccountEntity } from '../entities/account.entity.js';
 import { PermissionEntity } from '../entities/permission.entity.js';
 import { RolePermissionEntity } from '../entities/role-permission.entity.js';
 import { RoleEntity } from '../entities/role.entity.js';
+import { SnakeNamingStrategy } from './snake-naming.strategy.js';
 
 export function createTypeOrmOptions(
   config: ConfigService,
@@ -16,6 +17,7 @@ export function createTypeOrmOptions(
     username: config.getOrThrow<string>('database.username'),
     password: config.getOrThrow<string>('database.password'),
     database: config.getOrThrow<string>('database.name'),
+    namingStrategy: new SnakeNamingStrategy(),
     entities: [
       AccountEntity,
       AccountRoleEntity,
