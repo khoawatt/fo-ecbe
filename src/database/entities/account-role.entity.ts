@@ -20,13 +20,11 @@ export class AccountRoleEntity {
   id!: string;
 
   @Column({
-    name: 'account_id',
     type: 'uuid',
   })
   accountId!: string;
 
   @Column({
-    name: 'role_id',
     type: 'uuid',
   })
   roleId!: string;
@@ -50,7 +48,6 @@ export class AccountRoleEntity {
   role!: RoleEntity;
 
   @CreateDateColumn({
-    name: 'created_at',
     type: 'timestamptz',
   })
   createdAt!: Date;

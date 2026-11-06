@@ -11,6 +11,7 @@ import { RoleEntity } from '../../src/database/entities/role.entity.js';
 import AppDataSource from '../../src/database/data-source.js';
 import { CreateAccountRbacFoundation1791280000000 } from '../../src/database/migrations/1791280000000-CreateAccountRbacFoundation.js';
 import { AddRbacCanonicalization1793874600000 } from '../../src/database/migrations/1793874600000-AddRbacCanonicalization.js';
+import { SnakeNamingStrategy } from '../../src/database/typeorm/snake-naming.strategy.js';
 
 type Row = { id?: string; name?: string; code?: string };
 type CodeCase = { id: string; table: 'roles' | 'permissions'; value: string; name?: string; expected?: string; error?: string; seed?: boolean };
@@ -101,10 +102,74 @@ async function getTypeOrmSchemaDiff(schema: string) {
     }
 
     const schemaDiff = await schemaDataSource.driver.createSchemaBuilder().log();
+    const entityColumns = Object.fromEntries(
+      [
+        AccountEntity,
+        AccountRoleEntity,
+        PermissionEntity,
+        RoleEntity,
+        RolePermissionEntity,
+      ].map(entity => {
+        const entityMetadata = schemaDataSource.getMetadata(entity);
+        return [
+          entityMetadata.name,
+          Object.fromEntries(
+            entityMetadata.columns.map(column => [
+              column.propertyName,
+              column.databaseName,
+            ]),
+          ),
+        ];
+      }),
+    );
+    const accountRoleMetadata = schemaDataSource.getMetadata(AccountRoleEntity);
+    const rolePermissionMetadata = schemaDataSource.getMetadata(RolePermissionEntity);
     return {
       connectedSchema: connection.current_schema,
       currentSchemas: connection.current_schemas,
       schemaDiff,
+      entityColumns,
+      entityTables: Object.fromEntries(
+        [
+          AccountEntity,
+          AccountRoleEntity,
+          PermissionEntity,
+          RoleEntity,
+          RolePermissionEntity,
+        ].map(entity => {
+          const entityMetadata = schemaDataSource.getMetadata(entity);
+          return [entityMetadata.name, entityMetadata.tableName];
+        }),
+      ),
+      foreignKeyColumnCounts: {
+        accountRoleAccountId: accountRoleMetadata.columns.filter(
+          column => column.databaseName === 'account_id',
+        ).length,
+        accountRoleRoleId: accountRoleMetadata.columns.filter(
+          column => column.databaseName === 'role_id',
+        ).length,
+        rolePermissionRoleId: rolePermissionMetadata.columns.filter(
+          column => column.databaseName === 'role_id',
+        ).length,
+        rolePermissionPermissionId: rolePermissionMetadata.columns.filter(
+          column => column.databaseName === 'permission_id',
+        ).length,
+      },
+      relationJoinColumns: {
+        accountRoleAccount: accountRoleMetadata.relations.find(
+          relation => relation.propertyName === 'account',
+        )?.joinColumns.map(column => column.databaseName),
+        accountRoleRole: accountRoleMetadata.relations.find(
+          relation => relation.propertyName === 'role',
+        )?.joinColumns.map(column => column.databaseName),
+        rolePermissionRole: rolePermissionMetadata.relations.find(
+          relation => relation.propertyName === 'role',
+        )?.joinColumns.map(column => column.databaseName),
+        rolePermissionPermission: rolePermissionMetadata.relations.find(
+          relation => relation.propertyName === 'permission',
+        )?.joinColumns.map(column => column.databaseName),
+      },
+      namingStrategy: schemaDataSource.namingStrategy,
     };
   } finally {
     await schemaDataSource.destroy();
@@ -113,6 +178,8 @@ async function getTypeOrmSchemaDiff(schema: string) {
 
 function expectFoundationRbacObjects(found: { constraints: string[]; indexes: string[] }) {
   for (const name of [
+    'uq_accounts_email',
+    'uq_accounts_phone',
     'uq_roles_code',
     'uq_permissions_code',
     'ix_account_roles_role_id',
@@ -122,8 +189,14 @@ function expectFoundationRbacObjects(found: { constraints: string[]; indexes: st
   ]) expect(found.indexes).toContain(name);
 
   for (const name of [
+    'ck_accounts_email_canonical',
+    'ck_accounts_status',
     'uq_account_roles_account_id_role_id',
     'uq_role_permissions_role_id_permission_id',
+    'fk_account_roles_account_id',
+    'fk_account_roles_role_id',
+    'fk_role_permissions_role_id',
+    'fk_role_permissions_permission_id',
   ]) expect(found.constraints).toContain(name);
 }
 
@@ -305,11 +378,88 @@ describe('RBAC canonicalization migration (PostgreSQL)', () => {
     expect(index[0]?.expression).toContain('lower(btrim(');
     expect(index[0]?.expression).toContain('name');
 
-    const { connectedSchema, currentSchemas, schemaDiff } = await getTypeOrmSchemaDiff(schema);
+    const {
+      connectedSchema,
+      currentSchemas,
+      schemaDiff,
+      entityColumns,
+      entityTables,
+      foreignKeyColumnCounts,
+      relationJoinColumns,
+      namingStrategy,
+    } = await getTypeOrmSchemaDiff(schema);
     expect(connectedSchema).toBe(schema);
     expect(connectedSchema).not.toBe('public');
     expect(currentSchemas).toContain(schema);
     expect(currentSchemas[0]).toBe(schema);
+    expect(AppDataSource.options.namingStrategy).toBeInstanceOf(
+      SnakeNamingStrategy,
+    );
+    expect(namingStrategy).toBeInstanceOf(SnakeNamingStrategy);
+
+    expect(entityTables).toEqual({
+      AccountEntity: 'accounts',
+      AccountRoleEntity: 'account_roles',
+      PermissionEntity: 'permissions',
+      RoleEntity: 'roles',
+      RolePermissionEntity: 'role_permissions',
+    });
+
+    expect(entityColumns).toEqual({
+      AccountEntity: {
+        id: 'id',
+        email: 'email',
+        phone: 'phone',
+        passwordHash: 'password_hash',
+        status: 'status',
+        emailVerified: 'email_verified',
+        phoneVerified: 'phone_verified',
+        lastLoginAt: 'last_login_at',
+        createdAt: 'created_at',
+        updatedAt: 'updated_at',
+        deletedAt: 'deleted_at',
+      },
+      AccountRoleEntity: {
+        id: 'id',
+        accountId: 'account_id',
+        roleId: 'role_id',
+        createdAt: 'created_at',
+      },
+      PermissionEntity: {
+        id: 'id',
+        code: 'code',
+        description: 'description',
+        createdAt: 'created_at',
+        updatedAt: 'updated_at',
+      },
+      RoleEntity: {
+        id: 'id',
+        code: 'code',
+        name: 'name',
+        description: 'description',
+        isSystem: 'is_system',
+        createdAt: 'created_at',
+        updatedAt: 'updated_at',
+      },
+      RolePermissionEntity: {
+        id: 'id',
+        roleId: 'role_id',
+        permissionId: 'permission_id',
+        createdAt: 'created_at',
+      },
+    });
+    expect(foreignKeyColumnCounts).toEqual({
+      accountRoleAccountId: 1,
+      accountRoleRoleId: 1,
+      rolePermissionRoleId: 1,
+      rolePermissionPermissionId: 1,
+    });
+    expect(relationJoinColumns).toEqual({
+      accountRoleAccount: ['account_id'],
+      accountRoleRole: ['role_id'],
+      rolePermissionRole: ['role_id'],
+      rolePermissionPermission: ['permission_id'],
+    });
 
     const generatedSql = schemaDiff.upQueries.map(query =>
       query.parameters?.length

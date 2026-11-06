@@ -37,7 +37,6 @@ export class AccountEntity {
   phone!: string | null;
 
   @Column({
-    name: 'password_hash',
     type: 'varchar',
     length: 255,
     select: false,
@@ -52,40 +51,34 @@ export class AccountEntity {
   status!: AccountStatus;
 
   @Column({
-    name: 'email_verified',
     type: 'boolean',
     default: false,
   })
   emailVerified!: boolean;
 
   @Column({
-    name: 'phone_verified',
     type: 'boolean',
     default: false,
   })
   phoneVerified!: boolean;
 
   @Column({
-    name: 'last_login_at',
     type: 'timestamptz',
     nullable: true,
   })
   lastLoginAt!: Date | null;
 
   @CreateDateColumn({
-    name: 'created_at',
     type: 'timestamptz',
   })
   createdAt!: Date;
 
   @UpdateDateColumn({
-    name: 'updated_at',
     type: 'timestamptz',
   })
   updatedAt!: Date;
 
   @DeleteDateColumn({
-    name: 'deleted_at',
     type: 'timestamptz',
     nullable: true,
   })
