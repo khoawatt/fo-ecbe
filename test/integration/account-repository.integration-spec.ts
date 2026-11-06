@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import type { INestApplicationContext } from '@nestjs/common';
 import { MODULE_METADATA } from '@nestjs/common/constants';
 import { Test } from '@nestjs/testing';
+import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { DataSource, QueryFailedError } from 'typeorm';
@@ -13,12 +14,14 @@ import { PermissionEntity } from '../../src/database/entities/permission.entity.
 import { RolePermissionEntity } from '../../src/database/entities/role-permission.entity.js';
 import { RoleEntity } from '../../src/database/entities/role.entity.js';
 import { AppModule } from '../../src/app.module.js';
+import { appConfig } from '../../src/config/app.config.js';
 import AppDataSource from '../../src/database/data-source.js';
 import { CreateAccountRbacFoundation1791280000000 } from '../../src/database/migrations/1791280000000-CreateAccountRbacFoundation.js';
 import { AddRbacCanonicalization1793874600000 } from '../../src/database/migrations/1793874600000-AddRbacCanonicalization.js';
 import { ACCOUNT_REPOSITORY } from '../../src/modules/account/account.constants.js';
 import { AccountModule } from '../../src/modules/account/account.module.js';
 import { AccountRepository } from '../../src/modules/account/account.repository.js';
+import { AccountService } from '../../src/modules/account/account.service.js';
 import type { AccountRepositoryInterface } from '../../src/modules/account/contracts/account-repository.interface.js';
 import { AccountStatus } from '../../src/modules/account/types/account-status.js';
 
@@ -38,6 +41,7 @@ describe('AccountRepository (PostgreSQL)', () => {
   let app: INestApplicationContext;
   let dataSource: DataSource;
   let repository: AccountRepositoryInterface;
+  let service: AccountService;
 
   beforeAll(async () => {
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
@@ -68,6 +72,7 @@ describe('AccountRepository (PostgreSQL)', () => {
 
     const testingModule = await Test.createTestingModule({
       imports: [
+        ConfigModule.forRoot({ load: [appConfig] }),
         TypeOrmModule.forRoot({
           ...options,
           entities,
@@ -86,6 +91,7 @@ describe('AccountRepository (PostgreSQL)', () => {
     repository = testingModule
       .select(AccountModule)
       .get<AccountRepositoryInterface>(ACCOUNT_REPOSITORY, { strict: true });
+    service = testingModule.select(AccountModule).get(AccountService, { strict: true });
   }, 30_000);
 
   beforeEach(async () => {
@@ -106,10 +112,50 @@ describe('AccountRepository (PostgreSQL)', () => {
     const concrete = app.select(AccountModule).get(AccountRepository, { strict: true });
 
     expect(repository).toBe(concrete);
+    expect(service).toBeInstanceOf(AccountService);
+    expect(Reflect.getMetadata(MODULE_METADATA.EXPORTS, AccountModule)).toEqual([AccountService]);
     expect(Reflect.getMetadata(MODULE_METADATA.IMPORTS, AppModule) as unknown[]).toContain(AccountModule);
     expect((Reflect.getMetadata(MODULE_METADATA.EXPORTS, AccountModule) as unknown[] | undefined) ?? []).not.toContain(
       AccountRepository
     );
+  });
+
+  it('runs account creation, credential verification, status, roles and password changes against PostgreSQL', async () => {
+    const account = await service.createAccount({ email: ' User@Example.COM ', password: 'synthetic-old-password' });
+    expect(account.email).toBe('user@example.com');
+    expect(account.status).toBe(AccountStatus.PENDING);
+    expect(passwordHashOf(account)).toBeUndefined();
+    const credentials = await repository.findCredentialsByEmail(account.email);
+    expect(credentials?.passwordHash).not.toBe('synthetic-old-password');
+    expect(await service.verifyCredentials('USER@EXAMPLE.COM', 'synthetic-old-password')).toBeNull();
+    expect(await service.existsByEmail(' USER@EXAMPLE.COM ')).toBe(true);
+    expect((await service.findByEmail(' USER@EXAMPLE.COM '))?.id).toBe(account.id);
+    let duplicate: unknown;
+    try { await service.createAccount({ email: 'USER@EXAMPLE.COM', password: 'synthetic-other-password' }); }
+    catch (error) { duplicate = error; }
+    expect(sqlState(duplicate)).toBe('23505');
+    const updated = await service.updateAccount(account.id, { email: ' Updated@Example.COM ', phone: '+15550000004' });
+    expect(updated.email).toBe('updated@example.com');
+    expect(passwordHashOf(updated)).toBeUndefined();
+    await service.setAccountStatus(account.id, AccountStatus.ACTIVE);
+    const [admin] = (await dataSource.query("INSERT INTO roles (code, name) VALUES ('ADMIN', 'Administrator') RETURNING id")) as Array<{ id: string }>;
+    const [user] = (await dataSource.query("INSERT INTO roles (code, name) VALUES ('USER', 'User') RETURNING id")) as Array<{ id: string }>;
+    await dataSource.query('INSERT INTO account_roles (account_id, role_id) VALUES ($1, $2), ($1, $3)', [account.id, user?.id, admin?.id]);
+    expect(await service.verifyCredentials(' UPDATED@EXAMPLE.COM ', 'synthetic-old-password')).toEqual({
+      id: account.id, email: 'updated@example.com', roleCodes: ['ADMIN', 'USER']
+    });
+    await expect(service.changePassword(account.id, 'wrong', 'synthetic-new-password')).rejects.toThrow();
+    const changed = await service.changePassword(account.id, 'synthetic-old-password', 'synthetic-new-password');
+    expect(passwordHashOf(changed)).toBeUndefined();
+    expect(await service.verifyCredentials(updated.email, 'synthetic-old-password')).toBeNull();
+    expect(await service.verifyCredentials(updated.email, 'synthetic-new-password')).toMatchObject({ id: account.id });
+    for (const status of [AccountStatus.DISABLED, AccountStatus.SUSPENDED, AccountStatus.PENDING]) {
+      await service.setAccountStatus(account.id, status);
+      expect(await service.verifyCredentials(updated.email, 'synthetic-new-password')).toBeNull();
+      expect(await service.findRoleCodesByAccountId(account.id)).toEqual(['ADMIN', 'USER']);
+    }
+    await service.remove(account.id);
+    expect(await service.verifyCredentials(updated.email, 'synthetic-new-password')).toBeNull();
   });
 
   it('creates, reads, paginates, updates, and soft-deletes safe account records', async () => {
