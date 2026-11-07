@@ -31,6 +31,8 @@ export class JwtAccessTokenStrategy extends PassportStrategy(Strategy, 'jwt-acce
       !claims.roleCodes.every((code: unknown) => typeof code === 'string' && /^[A-Z][A-Z0-9_]*$/.test(code)) ||
       !Number.isInteger(claims.iat) ||
       !Number.isInteger(claims.exp) ||
+      (claims.iat as number) < 0 ||
+      (claims.iat as number) > Math.floor(Date.now() / 1000) ||
       (claims.exp as number) <= (claims.iat as number) ||
       (claims.exp as number) - (claims.iat as number) > this.ttlSeconds
     ) {
