@@ -30,6 +30,7 @@ jobs:
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
       DB_NAME: fo_ecbe_test
+      JWT_ACCESS_SECRET: ci-only-synthetic-jwt-secret-32-bytes-minimum
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
