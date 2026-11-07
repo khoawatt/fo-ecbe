@@ -38,14 +38,10 @@ export class AccountService extends BaseServiceAbstract<AccountRecord, never, Up
     return this.update(id, data);
   }
 
-  override update(id: string, data: UpdateAccountData): Promise<AccountRecord> {
-    const safeData: UpdateAccountData = {};
+  override update(id: string, data: UpdateAccountInput): Promise<AccountRecord> {
+    const safeData: UpdateAccountInput = {};
     if (data.email !== undefined) safeData.email = normalizeEmail(data.email);
     if (data.phone !== undefined) safeData.phone = data.phone;
-    if (data.status !== undefined) safeData.status = data.status;
-    if (data.emailVerified !== undefined) safeData.emailVerified = data.emailVerified;
-    if (data.phoneVerified !== undefined) safeData.phoneVerified = data.phoneVerified;
-    if (data.lastLoginAt !== undefined) safeData.lastLoginAt = data.lastLoginAt;
     return super.update(id, safeData);
   }
 

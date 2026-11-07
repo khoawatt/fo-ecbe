@@ -35,8 +35,30 @@ describe('AccountService', () => {
     const { service, repo } = setup();
     await service.updateAccount('id', { email: ' NEW@Example.COM ', phone: null, passwordHash: 'injected' } as never);
     expect(repo.update).toHaveBeenCalledWith('id', { email: 'new@example.com', phone: null });
-    await service.update('id', { email: ' AGAIN@Example.COM ', passwordHash: 'injected' } as never);
-    expect(repo.update).toHaveBeenLastCalledWith('id', { email: 'again@example.com' });
+    await service.update('id', {
+      email: ' AGAIN@Example.COM ',
+      phone: '+15550000001',
+      status: AccountStatus.DISABLED,
+      emailVerified: true,
+      phoneVerified: true,
+      lastLoginAt: new Date('2026-11-06T10:00:00Z'),
+      passwordHash: 'injected'
+    } as never);
+    expect(repo.update).toHaveBeenLastCalledWith('id', {
+      email: 'again@example.com',
+      phone: '+15550000001'
+    });
+    expect(repo.update.mock.lastCall?.[1]).not.toHaveProperty('status');
+    expect(repo.update.mock.lastCall?.[1]).not.toHaveProperty('emailVerified');
+    expect(repo.update.mock.lastCall?.[1]).not.toHaveProperty('phoneVerified');
+    expect(repo.update.mock.lastCall?.[1]).not.toHaveProperty('lastLoginAt');
+    expect(repo.update.mock.lastCall?.[1]).not.toHaveProperty('passwordHash');
+  });
+
+  it('changes status only through setAccountStatus', async () => {
+    const { service, repo } = setup();
+    await service.setAccountStatus('id', AccountStatus.SUSPENDED);
+    expect(repo.update).toHaveBeenCalledWith('id', { status: AccountStatus.SUSPENDED });
   });
 
   it('checks current password and changes only its hash', async () => {
