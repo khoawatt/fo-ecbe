@@ -4,6 +4,10 @@ export interface ValidatedEnv {
   NODE_ENV: 'development' | 'test' | 'production';
   PORT: number;
   BCRYPT_SALT_ROUNDS: number;
+  JWT_ACCESS_SECRET: string;
+  JWT_ACCESS_TTL_SECONDS: number;
+  JWT_ACCESS_ISSUER: string;
+  JWT_ACCESS_AUDIENCE: string;
   DB_HOST: string;
   DB_PORT: number;
   DB_USERNAME: string;

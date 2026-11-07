@@ -3,5 +3,9 @@ import { registerAs } from '@nestjs/config';
 export const appConfig = registerAs('app', () => ({
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: Number(process.env.PORT ?? 3000),
-  bcryptSaltRounds: Number(process.env.BCRYPT_SALT_ROUNDS ?? 12)
+  bcryptSaltRounds: Number(process.env.BCRYPT_SALT_ROUNDS ?? 12),
+  jwtAccessSecret: process.env.JWT_ACCESS_SECRET,
+  jwtAccessTtlSeconds: Number(process.env.JWT_ACCESS_TTL_SECONDS ?? 900),
+  jwtAccessIssuer: process.env.JWT_ACCESS_ISSUER ?? 'fo-ecbe',
+  jwtAccessAudience: process.env.JWT_ACCESS_AUDIENCE ?? 'fo-ecbe-api'
 }));
