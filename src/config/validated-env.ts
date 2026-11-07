@@ -3,6 +3,7 @@ import { envSchema } from './env.schema.js';
 export interface ValidatedEnv {
   NODE_ENV: 'development' | 'test' | 'production';
   PORT: number;
+  BCRYPT_SALT_ROUNDS: number;
   DB_HOST: string;
   DB_PORT: number;
   DB_USERNAME: string;

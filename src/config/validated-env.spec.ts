@@ -21,8 +21,17 @@ describe('validateEnvironment', () => {
       DB_HOST: '127.0.0.1',
       DB_PORT: 5432,
       DB_USERNAME: 'postgres',
-      DB_NAME: 'fo_ecbe_test'
+      DB_NAME: 'fo_ecbe_test',
+      BCRYPT_SALT_ROUNDS: 12
     });
+  });
+
+  it('defaults bcrypt rounds to 12 and rejects values outside integer 10 to 15', () => {
+    expect(validateEnvironment(validEnv).BCRYPT_SALT_ROUNDS).toBe(12);
+    expect(validateEnvironment({ ...validEnv, BCRYPT_SALT_ROUNDS: '15' }).BCRYPT_SALT_ROUNDS).toBe(15);
+    for (const invalid of ['9', '16', '12.5', 'abc']) {
+      expect(() => validateEnvironment({ ...validEnv, BCRYPT_SALT_ROUNDS: invalid })).toThrow(/BCRYPT_SALT_ROUNDS/);
+    }
   });
 
   it('fails fast when a required runtime variable is missing', () => {
