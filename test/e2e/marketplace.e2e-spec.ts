@@ -183,6 +183,8 @@ describe('Marketplace ownership and order foundation (PostgreSQL e2e)', () => {
       .set('Authorization', bearer(sellerA)).send({ quantity: 5 }).expect(201);
     await expect(source.query('INSERT INTO inventories (store_id, product_variant_id, quantity) VALUES ($1, $2, 1)',
       [storeBId, variantId])).rejects.toMatchObject({ driverError: { code: '23514' } });
+    await expect(source.query('UPDATE products SET store_id = $1 WHERE id = $2', [storeBId, productId]))
+      .rejects.toMatchObject({ driverError: { code: '23514' } });
     const adjustments = await Promise.all(Array.from({ length: 2 }, () => request(app.getHttpServer())
       .patch(`/stores/${storeAId}/inventory/${variantId}/adjust`).set('Authorization', bearer(sellerA)).send({ delta: -4 })));
     expect(adjustments.map(result => result.status).sort()).toEqual([200, 409]);
