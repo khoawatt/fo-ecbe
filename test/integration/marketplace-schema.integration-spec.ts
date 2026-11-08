@@ -29,7 +29,10 @@ import { CreateOrders1794055000000 } from '../../src/database/migrations/1794055
 
 describe('Marketplace migrations and TypeORM metadata (PostgreSQL)', () => {
   let schema: string;
-  beforeAll(async () => { if (!AppDataSource.isInitialized) await AppDataSource.initialize(); }, 30_000);
+  beforeAll(async () => {
+    if (!AppDataSource.isInitialized) await AppDataSource.initialize();
+    await AppDataSource.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public');
+  }, 30_000);
   afterAll(async () => {
     if (schema) await AppDataSource.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
     if (AppDataSource.isInitialized) await AppDataSource.destroy();

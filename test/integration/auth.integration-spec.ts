@@ -31,6 +31,7 @@ describe('AuthService (PostgreSQL integration)', () => {
 
   beforeAll(async () => {
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
+    await AppDataSource.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public');
     schema = `auth_integration_${randomUUID().replaceAll('-', '')}`;
     const runner = AppDataSource.createQueryRunner();
     await runner.connect();

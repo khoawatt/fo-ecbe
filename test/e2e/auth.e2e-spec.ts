@@ -71,6 +71,7 @@ describe('Local login and access JWT (PostgreSQL e2e)', () => {
 
   beforeAll(async () => {
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
+    await AppDataSource.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public');
     schema = `auth_e2e_${randomUUID().replaceAll('-', '')}`;
     const runner = AppDataSource.createQueryRunner();
     await runner.connect();
