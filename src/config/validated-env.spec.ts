@@ -67,4 +67,15 @@ describe('validateEnvironment', () => {
     }
     expect(() => validateEnvironment({ ...validEnv, JWT_REFRESH_AUDIENCE: 'fo-ecbe-api' })).toThrow();
   });
+
+  it.each(['test', 'production'])('rejects missing, short, or equal JWT secrets in %s', (nodeEnv) => {
+    const env: Record<string, string> = { ...validEnv, NODE_ENV: nodeEnv };
+    expect(validateEnvironment(env).NODE_ENV).toBe(nodeEnv);
+    expect(() => validateEnvironment({ ...env, JWT_ACCESS_SECRET: undefined })).toThrow(/JWT_ACCESS_SECRET/);
+    expect(() => validateEnvironment({ ...env, JWT_REFRESH_SECRET: undefined })).toThrow(/JWT_REFRESH_SECRET/);
+    expect(() => validateEnvironment({ ...env, JWT_ACCESS_SECRET: 'short' })).toThrow(/JWT_ACCESS_SECRET/);
+    expect(() => validateEnvironment({ ...env, JWT_REFRESH_SECRET: 'short' })).toThrow(/JWT_REFRESH_SECRET/);
+    expect(() => validateEnvironment({ ...env, JWT_REFRESH_SECRET: env.JWT_ACCESS_SECRET }))
+      .toThrow('JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must differ');
+  });
 });

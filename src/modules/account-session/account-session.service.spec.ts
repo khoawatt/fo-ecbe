@@ -18,7 +18,7 @@ describe('AccountSessionService token boundary', () => {
   const accountId = randomUUID();
 
   it('persists only a SHA-256 fingerprint and issues a session-bound unique-jti token', async () => {
-    const createSession = vi.fn();
+    const createSession = vi.fn().mockResolvedValue(true);
     const service = new AccountSessionService({ createSession } as unknown as AccountSessionRepositoryInterface, jwt, config);
     const first = await service.create(accountId, { deviceName: 'test' });
     const second = await service.create(accountId, {});
@@ -30,6 +30,12 @@ describe('AccountSessionService token boundary', () => {
     expect(createSession).toHaveBeenCalledWith(accountId, firstClaims.sid,
       createHash('sha256').update(first).digest('hex'), expect.any(Date), { deviceName: 'test' });
     expect(JSON.stringify(createSession.mock.calls)).not.toContain(first);
+  });
+
+  it('does not issue a refresh token when the account is no longer active at session creation', async () => {
+    const createSession = vi.fn().mockResolvedValue(false);
+    const service = new AccountSessionService({ createSession } as unknown as AccountSessionRepositoryInterface, jwt, config);
+    await expect(service.create(accountId, {})).rejects.toThrow(UnauthorizedException);
   });
 
   it('returns one generic 401 for forged, expired, wrong-type, and malformed refresh tokens', async () => {

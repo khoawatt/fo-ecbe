@@ -37,7 +37,9 @@ export class AccountSessionService {
   async create(accountId: string, metadata: SessionMetadata): Promise<string> {
     const sessionId = randomUUID();
     const next = await this.issue(accountId, sessionId);
-    await this.sessions.createSession(accountId, sessionId, this.fingerprint(next.token), next.expiry, metadata);
+    if (!(await this.sessions.createSession(accountId, sessionId, this.fingerprint(next.token), next.expiry, metadata))) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
     return next.token;
   }
 

@@ -4,7 +4,8 @@ import type { PageQuery } from '../../common/contracts/page-query.js';
 import type { PageResult } from '../../common/contracts/page-result.js';
 import { BaseRepositoryAbstract } from '../../core/repository/base-repository.abstract.js';
 import { AccountEntity } from '../../database/entities/account.entity.js';
-import type { Repository, SelectQueryBuilder } from 'typeorm';
+import { AccountSessionEntity } from '../../database/entities/account-session.entity.js';
+import type { EntityManager, Repository, SelectQueryBuilder } from 'typeorm';
 import type { AccountRepositoryInterface } from './contracts/account-repository.interface.js';
 import type {
   AccountCredentials,
@@ -12,6 +13,7 @@ import type {
   CreateAccountData,
   UpdateAccountData
 } from './contracts/account-repository.types.js';
+import { AccountStatus } from './types/account-status.js';
 
 const SAFE_ACCOUNT_COLUMNS: Array<keyof AccountEntity> = [
   'id',
@@ -68,30 +70,41 @@ export class AccountRepository
   }
 
   override async update(id: string, data: UpdateAccountData): Promise<AccountRecord | null> {
-    const entity = await this.accountRepository.findOneBy({ id });
-    if (!entity) return null;
+    return this.accountRepository.manager.transaction(async (manager) => {
+      const entity = await manager.getRepository(AccountEntity).findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
+      if (!entity) return null;
 
-    const safeUpdate: UpdateAccountData = {};
-    if (data.email !== undefined) safeUpdate.email = data.email;
-    if (data.phone !== undefined) safeUpdate.phone = data.phone;
-    if (data.status !== undefined) safeUpdate.status = data.status;
-    if (data.emailVerified !== undefined) {
-      safeUpdate.emailVerified = data.emailVerified;
-    }
-    if (data.phoneVerified !== undefined) {
-      safeUpdate.phoneVerified = data.phoneVerified;
-    }
-    if (data.lastLoginAt !== undefined) {
-      safeUpdate.lastLoginAt = data.lastLoginAt;
-    }
-    this.accountRepository.merge(entity, safeUpdate);
-    const saved = await this.accountRepository.save(entity);
-    return this.toRecord(saved);
+      const safeUpdate: UpdateAccountData = {};
+      if (data.email !== undefined) safeUpdate.email = data.email;
+      if (data.phone !== undefined) safeUpdate.phone = data.phone;
+      if (data.status !== undefined) safeUpdate.status = data.status;
+      if (data.emailVerified !== undefined) safeUpdate.emailVerified = data.emailVerified;
+      if (data.phoneVerified !== undefined) safeUpdate.phoneVerified = data.phoneVerified;
+      if (data.lastLoginAt !== undefined) safeUpdate.lastLoginAt = data.lastLoginAt;
+      manager.merge(AccountEntity, entity, safeUpdate);
+      const saved = await manager.save(entity);
+      if (data.status !== undefined && data.status !== AccountStatus.ACTIVE) {
+        await this.revokeAllActiveSessionsByAccountId(manager, id);
+      }
+      return this.toRecord(saved);
+    });
   }
 
   override async softDelete(id: string): Promise<boolean> {
-    const result = await this.accountRepository.softDelete({ id });
-    return (result.affected ?? 0) > 0;
+    return this.accountRepository.manager.transaction(async (manager) => {
+      const entity = await manager.getRepository(AccountEntity).findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
+      if (!entity) return false;
+      const result = await manager.softDelete(AccountEntity, { id });
+      await this.revokeAllActiveSessionsByAccountId(manager, id);
+      return (result.affected ?? 0) > 0;
+    });
+  }
+
+  private async revokeAllActiveSessionsByAccountId(manager: EntityManager, accountId: string): Promise<void> {
+    await manager.createQueryBuilder().update(AccountSessionEntity)
+      .set({ revokedAt: () => 'now()' })
+      .where('account_id = :accountId AND revoked_at IS NULL', { accountId })
+      .execute();
   }
 
   async findByEmail(email: string): Promise<AccountRecord | null> {

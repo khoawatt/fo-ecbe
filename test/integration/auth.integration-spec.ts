@@ -97,4 +97,10 @@ describe('AuthService (PostgreSQL integration)', () => {
     await accounts.remove(account.id);
     expect(await auth.validateCredentials('user@example.com', 'synthetic-integration-password')).toBeNull();
   });
+
+  it('has no TypeORM schema drift after the AccountSession migration', async () => {
+    const diff = await source.driver.createSchemaBuilder().log();
+    expect(diff.upQueries.map((query) => query.query)).toEqual([]);
+    expect(diff.downQueries.map((query) => query.query)).toEqual([]);
+  });
 });

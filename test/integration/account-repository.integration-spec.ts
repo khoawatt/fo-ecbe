@@ -10,6 +10,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { DataSource, QueryFailedError } from 'typeorm';
 import { AccountRoleEntity } from '../../src/database/entities/account-role.entity.js';
 import { AccountEntity } from '../../src/database/entities/account.entity.js';
+import { AccountSessionEntity } from '../../src/database/entities/account-session.entity.js';
 import { PermissionEntity } from '../../src/database/entities/permission.entity.js';
 import { RolePermissionEntity } from '../../src/database/entities/role-permission.entity.js';
 import { RoleEntity } from '../../src/database/entities/role.entity.js';
@@ -18,6 +19,7 @@ import { appConfig } from '../../src/config/app.config.js';
 import AppDataSource from '../../src/database/data-source.js';
 import { CreateAccountRbacFoundation1791280000000 } from '../../src/database/migrations/1791280000000-CreateAccountRbacFoundation.js';
 import { AddRbacCanonicalization1793874600000 } from '../../src/database/migrations/1793874600000-AddRbacCanonicalization.js';
+import { CreateAccountSessions1794050000000 } from '../../src/database/migrations/1794050000000-CreateAccountSessions.js';
 import { ACCOUNT_REPOSITORY } from '../../src/modules/account/account.constants.js';
 import { AccountModule } from '../../src/modules/account/account.module.js';
 import { AccountRepository } from '../../src/modules/account/account.repository.js';
@@ -25,7 +27,7 @@ import { AccountService } from '../../src/modules/account/account.service.js';
 import type { AccountRepositoryInterface } from '../../src/modules/account/contracts/account-repository.interface.js';
 import { AccountStatus } from '../../src/modules/account/types/account-status.js';
 
-const entities = [AccountEntity, AccountRoleEntity, PermissionEntity, RoleEntity, RolePermissionEntity];
+const entities = [AccountEntity, AccountRoleEntity, AccountSessionEntity, PermissionEntity, RoleEntity, RolePermissionEntity];
 
 function passwordHashOf(value: unknown): unknown {
   return (value as Record<string, unknown>).passwordHash;
@@ -57,6 +59,7 @@ describe('AccountRepository (PostgreSQL)', () => {
       try {
         await new CreateAccountRbacFoundation1791280000000().up(queryRunner);
         await new AddRbacCanonicalization1793874600000().up(queryRunner);
+        await new CreateAccountSessions1794050000000().up(queryRunner);
         await queryRunner.commitTransaction();
       } catch (error) {
         if (queryRunner.isTransactionActive) await queryRunner.rollbackTransaction();

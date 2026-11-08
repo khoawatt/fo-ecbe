@@ -236,6 +236,75 @@ describe('Local login and access JWT (PostgreSQL e2e)', () => {
     await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: initial.body.refreshToken }).expect(401);
   });
 
+  it.each([AccountStatus.DISABLED, AccountStatus.SUSPENDED, AccountStatus.PENDING])(
+    'permanently revokes every session on ACTIVE to %s', async (status) => {
+      const first = await login().expect(200);
+      const second = await login().expect(200);
+      await accountService.setAccountStatus(accountId, status);
+      const rows = await dataSource.query(
+        'SELECT revoked_at FROM account_sessions WHERE account_id = $1', [accountId]
+      ) as Array<{ revoked_at: Date | null }>;
+      expect(rows).toHaveLength(2);
+      expect(rows.every((row) => row.revoked_at !== null)).toBe(true);
+      await accountService.setAccountStatus(accountId, status);
+      const repeated = await dataSource.query(
+        'SELECT revoked_at FROM account_sessions WHERE account_id = $1 ORDER BY id', [accountId]
+      ) as Array<{ revoked_at: Date | null }>;
+      expect(repeated.map((row) => row.revoked_at?.getTime()).sort())
+        .toEqual(rows.map((row) => row.revoked_at?.getTime()).sort());
+      await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: first.body.refreshToken }).expect(401);
+      await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: second.body.refreshToken }).expect(401);
+
+      await accountService.setAccountStatus(accountId, AccountStatus.ACTIVE);
+      await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: first.body.refreshToken }).expect(401);
+      const fresh = await login().expect(200);
+      await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: fresh.body.refreshToken }).expect(200);
+      const afterReactivation = await dataSource.query(
+        'SELECT revoked_at FROM account_sessions WHERE account_id = $1 ORDER BY created_at, id', [accountId]
+      ) as Array<{ revoked_at: Date | null }>;
+      expect(afterReactivation.filter((row) => row.revoked_at !== null)).toHaveLength(2);
+      expect(afterReactivation.filter((row) => row.revoked_at === null)).toHaveLength(1);
+    }
+  );
+
+  it('revokes soft-deleted account sessions without affecting another account', async () => {
+    const own = await login().expect(200);
+    const other = await accountService.createAccount({ email: 'other@example.com', password });
+    await accountService.setAccountStatus(other.id, AccountStatus.ACTIVE);
+    const otherLogin = await login('other@example.com').expect(200);
+    await accountService.remove(accountId);
+    await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: own.body.refreshToken }).expect(401);
+    const rows = await dataSource.query(
+      'SELECT account_id, revoked_at FROM account_sessions WHERE account_id = ANY($1::uuid[])', [[accountId, other.id]]
+    ) as Array<{ account_id: string; revoked_at: Date | null }>;
+    expect(rows.find((row) => row.account_id === accountId)?.revoked_at).not.toBeNull();
+    expect(rows.find((row) => row.account_id === other.id)?.revoked_at).toBeNull();
+    await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: otherLogin.body.refreshToken }).expect(200);
+  });
+
+  it('rolls back account status and deletion when session revocation fails', async () => {
+    await login().expect(200);
+    await dataSource.query(`CREATE FUNCTION fail_session_revoke() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN RAISE EXCEPTION 'synthetic revocation failure'; END $$`);
+    await dataSource.query(`CREATE TRIGGER fail_session_revoke BEFORE UPDATE OF revoked_at ON account_sessions
+      FOR EACH ROW EXECUTE FUNCTION fail_session_revoke()`);
+    try {
+      await expect(accountService.setAccountStatus(accountId, AccountStatus.DISABLED))
+        .rejects.toThrow('synthetic revocation failure');
+      expect((await accountService.findById(accountId)).status).toBe(AccountStatus.ACTIVE);
+      await expect(accountService.remove(accountId)).rejects.toThrow('synthetic revocation failure');
+      expect((await accountService.findById(accountId)).deletedAt).toBeNull();
+      const rows = await dataSource.query(
+        'SELECT revoked_at FROM account_sessions WHERE account_id = $1', [accountId]
+      ) as Array<{ revoked_at: Date | null }>;
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.revoked_at).toBeNull();
+    } finally {
+      await dataSource.query('DROP TRIGGER fail_session_revoke ON account_sessions');
+      await dataSource.query('DROP FUNCTION fail_session_revoke()');
+    }
+  });
+
   it('rejects invalid refresh tokens and unknown request fields', async () => {
     const access = await login().expect(200);
     const token = access.body.refreshToken as string;
