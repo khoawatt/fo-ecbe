@@ -26,8 +26,11 @@ export function validateEnvironment(env: NodeJS.ProcessEnv): ValidatedEnv {
     stripUnknown: false
   });
   if (error) throw new Error(`Invalid environment configuration: ${error.message}`);
-  if (value.JWT_REFRESH_SECRET === value.JWT_ACCESS_SECRET || value.JWT_REFRESH_AUDIENCE === value.JWT_ACCESS_AUDIENCE) {
-    throw new Error('Refresh signing secret and audience must differ from access configuration');
+  if (value.JWT_REFRESH_SECRET === value.JWT_ACCESS_SECRET) {
+    throw new Error('JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must differ');
+  }
+  if (value.JWT_REFRESH_AUDIENCE === value.JWT_ACCESS_AUDIENCE) {
+    throw new Error('Refresh audience must differ from access audience');
   }
   return value as ValidatedEnv;
 }
