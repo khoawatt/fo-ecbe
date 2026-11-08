@@ -14,14 +14,20 @@ import { AppConfigModule } from '../../src/config/config.module.js';
 import AppDataSource from '../../src/database/data-source.js';
 import { AccountRoleEntity } from '../../src/database/entities/account-role.entity.js';
 import { AccountEntity } from '../../src/database/entities/account.entity.js';
+import { AccountSessionEntity } from '../../src/database/entities/account-session.entity.js';
 import { PermissionEntity } from '../../src/database/entities/permission.entity.js';
 import { RolePermissionEntity } from '../../src/database/entities/role-permission.entity.js';
 import { RoleEntity } from '../../src/database/entities/role.entity.js';
 import { CreateAccountRbacFoundation1791280000000 } from '../../src/database/migrations/1791280000000-CreateAccountRbacFoundation.js';
 import { AddRbacCanonicalization1793874600000 } from '../../src/database/migrations/1793874600000-AddRbacCanonicalization.js';
+import { CreateAccountSessions1794050000000 } from '../../src/database/migrations/1794050000000-CreateAccountSessions.js';
 import { AccountService } from '../../src/modules/account/account.service.js';
 import { AccountStatus } from '../../src/modules/account/types/account-status.js';
 import { AuthModule } from '../../src/modules/auth/auth.module.js';
+import { AccountHttpModule } from '../../src/modules/account-http/account-http.module.js';
+import { AuthorizationModule } from '../../src/modules/authorization/authorization.module.js';
+import { PermissionGuard } from '../../src/modules/authorization/permission.guard.js';
+import { Permissions } from '../../src/modules/authorization/permissions.decorator.js';
 import { JwtAccessTokenGuard } from '../../src/modules/auth/guards/jwt-access-token.guard.js';
 import type { AuthenticatedPrincipal } from '../../src/modules/auth/types/authenticated-principal.js';
 
@@ -32,6 +38,14 @@ class AuthProbeController {
   read(@Req() req: Request & { user: AuthenticatedPrincipal }): AuthenticatedPrincipal {
     return req.user;
   }
+}
+
+@Controller('permission-probe')
+class PermissionProbeController {
+  @Get()
+  @Permissions('account:read')
+  @UseGuards(JwtAccessTokenGuard, PermissionGuard)
+  read() { return { allowed: true }; }
 }
 
 describe('Local login and access JWT (PostgreSQL e2e)', () => {
@@ -67,6 +81,7 @@ describe('Local login and access JWT (PostgreSQL e2e)', () => {
       try {
         await new CreateAccountRbacFoundation1791280000000().up(runner);
         await new AddRbacCanonicalization1793874600000().up(runner);
+        await new CreateAccountSessions1794050000000().up(runner);
         await runner.commitTransaction();
       } catch (error) {
         if (runner.isTransactionActive) await runner.rollbackTransaction();
@@ -82,13 +97,15 @@ describe('Local login and access JWT (PostgreSQL e2e)', () => {
         AppConfigModule,
         TypeOrmModule.forRoot({
           ...options,
-          entities: [AccountEntity, AccountRoleEntity, PermissionEntity, RoleEntity, RolePermissionEntity],
+          entities: [AccountEntity, AccountRoleEntity, AccountSessionEntity, PermissionEntity, RoleEntity, RolePermissionEntity],
           migrations: [],
           extra: { ...(options.extra ?? {}), options: `-c search_path="${schema}",public` }
         }),
-        AuthModule
+        AuthModule,
+        AccountHttpModule,
+        AuthorizationModule
       ],
-      controllers: [AuthProbeController]
+      controllers: [AuthProbeController, PermissionProbeController]
     }).compile();
     app = moduleRef.createNestApplication();
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }));
@@ -98,7 +115,7 @@ describe('Local login and access JWT (PostgreSQL e2e)', () => {
   }, 30_000);
 
   beforeEach(async () => {
-    await dataSource.query('TRUNCATE TABLE account_roles, role_permissions, roles, permissions, accounts RESTART IDENTITY CASCADE');
+    await dataSource.query('TRUNCATE TABLE account_sessions, account_roles, role_permissions, roles, permissions, accounts RESTART IDENTITY CASCADE');
     const account = await accountService.createAccount({ email: 'User@Example.COM', password });
     accountId = account.id;
     await accountService.setAccountStatus(account.id, AccountStatus.ACTIVE);
@@ -178,5 +195,83 @@ describe('Local login and access JWT (PostgreSQL e2e)', () => {
     } finally {
       await dataSource.initialize();
     }
+  });
+
+  it('rotates one session without affecting another, rejects reuse, and logs out only the current session', async () => {
+    const first = await login().expect(200);
+    const second = await login().expect(200);
+    const firstToken = first.body.refreshToken as string;
+    const secondToken = second.body.refreshToken as string;
+    expect(firstToken).not.toBe(secondToken);
+    const rows = await dataSource.query('SELECT refresh_token_hash FROM account_sessions WHERE account_id = $1', [accountId]) as Array<{ refresh_token_hash: string }>;
+    expect(rows).toHaveLength(2);
+    expect(rows.every(row => /^[a-f0-9]{64}$/.test(row.refresh_token_hash))).toBe(true);
+    expect(rows.every(row => row.refresh_token_hash !== firstToken && row.refresh_token_hash !== secondToken)).toBe(true);
+
+    const rotated = await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: firstToken }).expect(200);
+    expect(rotated.body.refreshToken).not.toBe(firstToken);
+    await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: firstToken }).expect(401);
+    await request(app.getHttpServer()).post('/auth/logout').send({ refreshToken: rotated.body.refreshToken }).expect(204);
+    await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: rotated.body.refreshToken }).expect(401);
+    await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: secondToken }).expect(200);
+  });
+
+  it('allows exactly one concurrent rotation of the same refresh token', async () => {
+    const initial = await login().expect(200);
+    const token = initial.body.refreshToken as string;
+    const results = await Promise.all(Array.from({ length: 2 }, () =>
+      request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: token })
+    ));
+    expect(results.map(result => result.status).sort()).toEqual([200, 401]);
+  });
+
+  it('rejects refresh for inactive and soft-deleted accounts', async () => {
+    const initial = await login().expect(200);
+    for (const status of [AccountStatus.PENDING, AccountStatus.SUSPENDED, AccountStatus.DISABLED]) {
+      await accountService.setAccountStatus(accountId, status);
+      await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: initial.body.refreshToken }).expect(401);
+    }
+    await accountService.remove(accountId);
+    await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: initial.body.refreshToken }).expect(401);
+  });
+
+  it('rejects invalid refresh tokens and unknown request fields', async () => {
+    const access = await login().expect(200);
+    const token = access.body.refreshToken as string;
+    for (const invalid of ['bad-token', access.body.accessToken, signer('wrong-secret-that-is-long-enough-for-jwt').sign({
+      sub: accountId, sid: randomUUID(), jti: randomUUID(), tokenType: 'refresh'
+    })]) {
+      await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: invalid }).expect(401);
+    }
+    await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: token, unexpected: true }).expect(400);
+    await request(app.getHttpServer()).post('/auth/logout').send({ refreshToken: 12 }).expect(400);
+  });
+
+  it('enforces self-service identity, ADMIN management and permission relationships', async () => {
+    await request(app.getHttpServer()).get('/account/me').expect(401);
+    const adminLogin = await login().expect(200);
+    const adminToken = adminLogin.body.accessToken as string;
+    await request(app.getHttpServer()).get('/account/me').set('Authorization', `Bearer ${adminToken}`).expect(200);
+    const other = await accountService.createAccount({ email: 'other@example.com', password });
+    await accountService.setAccountStatus(other.id, AccountStatus.ACTIVE);
+    await request(app.getHttpServer()).get(`/account/${other.id}`).set('Authorization', `Bearer ${adminToken}`).expect(200);
+    await request(app.getHttpServer()).patch(`/account/${other.id}/disable`).set('Authorization', `Bearer ${adminToken}`).expect(200);
+    expect((await accountService.findById(other.id)).status).toBe(AccountStatus.DISABLED);
+    await request(app.getHttpServer()).get(`/account/${randomUUID()}`).set('Authorization', `Bearer ${adminToken}`).expect(404);
+
+    await dataSource.query("DELETE FROM account_roles WHERE account_id = $1 AND role_id IN (SELECT id FROM roles WHERE code = 'ADMIN')", [accountId]);
+    const sellerLogin = await login().expect(200);
+    const sellerToken = sellerLogin.body.accessToken as string;
+    const bearer = `Bearer ${sellerToken}`;
+    await request(app.getHttpServer()).get(`/account/${other.id}`).set('Authorization', bearer).expect(403);
+    await request(app.getHttpServer()).patch(`/account/${other.id}/disable`).set('Authorization', bearer).expect(403);
+    await request(app.getHttpServer()).patch('/account/me').set('Authorization', bearer).send({ status: 'ACTIVE' }).expect(400);
+    await request(app.getHttpServer()).patch('/account/me').set('Authorization', bearer).send({ email: 'updated@example.com' }).expect(200);
+    expect((await accountService.findById(accountId)).email).toBe('updated@example.com');
+    await request(app.getHttpServer()).patch('/account/me').set('Authorization', bearer).send({ email: 'other@example.com' }).expect(409);
+    await request(app.getHttpServer()).get('/permission-probe').set('Authorization', bearer).expect(403);
+    const [permission] = await dataSource.query("INSERT INTO permissions (code) VALUES ('account:read') RETURNING id") as Array<{ id: string }>;
+    await dataSource.query("INSERT INTO role_permissions (role_id, permission_id) SELECT id, $1 FROM roles WHERE code = 'SELLER'", [permission?.id]);
+    await request(app.getHttpServer()).get('/permission-probe').set('Authorization', bearer).expect(200);
   });
 });

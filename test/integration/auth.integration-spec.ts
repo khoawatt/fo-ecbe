@@ -10,11 +10,13 @@ import { AppConfigModule } from '../../src/config/config.module.js';
 import AppDataSource from '../../src/database/data-source.js';
 import { AccountRoleEntity } from '../../src/database/entities/account-role.entity.js';
 import { AccountEntity } from '../../src/database/entities/account.entity.js';
+import { AccountSessionEntity } from '../../src/database/entities/account-session.entity.js';
 import { PermissionEntity } from '../../src/database/entities/permission.entity.js';
 import { RolePermissionEntity } from '../../src/database/entities/role-permission.entity.js';
 import { RoleEntity } from '../../src/database/entities/role.entity.js';
 import { CreateAccountRbacFoundation1791280000000 } from '../../src/database/migrations/1791280000000-CreateAccountRbacFoundation.js';
 import { AddRbacCanonicalization1793874600000 } from '../../src/database/migrations/1793874600000-AddRbacCanonicalization.js';
+import { CreateAccountSessions1794050000000 } from '../../src/database/migrations/1794050000000-CreateAccountSessions.js';
 import { AccountService } from '../../src/modules/account/account.service.js';
 import { AccountStatus } from '../../src/modules/account/types/account-status.js';
 import { AuthModule } from '../../src/modules/auth/auth.module.js';
@@ -39,6 +41,7 @@ describe('AuthService (PostgreSQL integration)', () => {
       try {
         await new CreateAccountRbacFoundation1791280000000().up(runner);
         await new AddRbacCanonicalization1793874600000().up(runner);
+        await new CreateAccountSessions1794050000000().up(runner);
         await runner.commitTransaction();
       } catch (error) {
         if (runner.isTransactionActive) await runner.rollbackTransaction();
@@ -54,7 +57,7 @@ describe('AuthService (PostgreSQL integration)', () => {
         AppConfigModule,
         TypeOrmModule.forRoot({
           ...options,
-          entities: [AccountEntity, AccountRoleEntity, PermissionEntity, RoleEntity, RolePermissionEntity],
+          entities: [AccountEntity, AccountRoleEntity, AccountSessionEntity, PermissionEntity, RoleEntity, RolePermissionEntity],
           migrations: [],
           extra: { ...(options.extra ?? {}), options: `-c search_path="${schema}",public` }
         }),

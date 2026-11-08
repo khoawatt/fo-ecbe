@@ -3,6 +3,9 @@ import { JwtService } from '@nestjs/jwt';
 import { describe, expect, it, vi } from 'vitest';
 import { AccountService } from '../account/account.service.js';
 import { AuthService } from './auth.service.js';
+import { AccountSessionService } from '../account-session/account-session.service.js';
+
+const sessions = {} as AccountSessionService;
 
 describe('AuthService', () => {
   const id = '14701422-d28a-4f03-898a-861a20c865ce';
@@ -14,7 +17,7 @@ describe('AuthService', () => {
     const service = new AuthService(
       { verifyCredentials } as unknown as AccountService,
       new JwtService({ secret }),
-      new ConfigService({ app: { jwtAccessTtlSeconds: 900 } })
+      new ConfigService({ app: { jwtAccessTtlSeconds: 900 } }), sessions
     );
     expect(await service.validateCredentials('User@Example.COM', 'password')).toBe(account);
     expect(verifyCredentials).toHaveBeenCalledExactlyOnceWith('User@Example.COM', 'password');
@@ -25,7 +28,7 @@ describe('AuthService', () => {
     const service = new AuthService(
       { verifyCredentials } as unknown as AccountService,
       new JwtService({ secret }),
-      new ConfigService({ app: { jwtAccessTtlSeconds: 900 } })
+      new ConfigService({ app: { jwtAccessTtlSeconds: 900 } }), sessions
     );
     expect(await service.validateCredentials('unknown@example.com', 'wrong')).toBeNull();
     expect(verifyCredentials).toHaveBeenCalledOnce();
@@ -40,7 +43,7 @@ describe('AuthService', () => {
     const service = new AuthService(
       { verifyCredentials } as unknown as AccountService,
       jwt,
-      new ConfigService({ app: { jwtAccessTtlSeconds: 900 } })
+      new ConfigService({ app: { jwtAccessTtlSeconds: 900 } }), sessions
     );
     const response = await service.issueAccessToken(account);
     const payload = await jwt.verifyAsync<Record<string, unknown>>(response.accessToken, {
