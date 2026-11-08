@@ -34,8 +34,8 @@ export class CreateInventories1794054000000 implements MigrationInterface {
     await q.query('CREATE TRIGGER trg_products_stocked_store BEFORE UPDATE OF store_id ON products FOR EACH ROW EXECUTE FUNCTION protect_stocked_product_store()');
   }
   async down(q: QueryRunner): Promise<void> {
-    await q.query('DROP TRIGGER trg_products_stocked_store ON products');
-    await q.query('DROP FUNCTION protect_stocked_product_store()');
+    await q.query('DROP TRIGGER IF EXISTS trg_products_stocked_store ON products');
+    await q.query('DROP FUNCTION IF EXISTS protect_stocked_product_store()');
     await q.query('DROP TABLE "inventories"');
     await q.query('DROP FUNCTION check_inventory_variant_store()');
   }
