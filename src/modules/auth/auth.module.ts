@@ -4,6 +4,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AppConfigModule } from '../../config/config.module.js';
 import { AccountModule } from '../account/account.module.js';
+import { AccountSessionModule } from '../account-session/account-session.module.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { JwtAccessTokenGuard } from './guards/jwt-access-token.guard.js';
@@ -15,6 +16,7 @@ import { LocalStrategy } from './strategies/local.strategy.js';
   imports: [
     AppConfigModule,
     AccountModule,
+    AccountSessionModule,
     PassportModule.register({ session: false }),
     JwtModule.registerAsync({
       inject: [ConfigService],
