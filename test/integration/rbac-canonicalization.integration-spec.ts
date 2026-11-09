@@ -208,7 +208,10 @@ function expectCanonicalObjects(found: { constraints: string[]; indexes: string[
   expect(found.indexes).toContain('uq_roles_name_canonical');
 }
 
-beforeAll(async () => { if (!AppDataSource.isInitialized) await AppDataSource.initialize(); }, 30_000);
+beforeAll(async () => {
+  if (!AppDataSource.isInitialized) await AppDataSource.initialize();
+  await AppDataSource.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public');
+}, 30_000);
 afterAll(async () => { if (AppDataSource.isInitialized) await AppDataSource.destroy(); }, 30_000);
 
 describe('RBAC canonicalization migration (PostgreSQL)', () => {

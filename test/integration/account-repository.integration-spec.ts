@@ -47,6 +47,7 @@ describe('AccountRepository (PostgreSQL)', () => {
 
   beforeAll(async () => {
     if (!AppDataSource.isInitialized) await AppDataSource.initialize();
+    await AppDataSource.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA public');
 
     schema = `account_repository_${randomUUID().replaceAll('-', '')}`;
     const queryRunner = AppDataSource.createQueryRunner();
