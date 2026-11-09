@@ -10,7 +10,8 @@ describe('validateEnvironment', () => {
     DB_USERNAME: 'postgres',
     DB_PASSWORD: ['unit', 'test', 'credential'].join('-'),
     DB_NAME: 'fo_ecbe_test',
-    JWT_ACCESS_SECRET: 'synthetic-unit-test-secret-at-least-32-bytes'
+    JWT_ACCESS_SECRET: 'synthetic-unit-test-secret-at-least-32-bytes',
+    JWT_REFRESH_SECRET: 'different-synthetic-refresh-secret-32-bytes'
   };
 
   it('accepts a complete valid configuration', () => {
@@ -53,5 +54,28 @@ describe('validateEnvironment', () => {
       expect(() => validateEnvironment({ ...validEnv, JWT_ACCESS_TTL_SECONDS: ttl })).toThrow(/JWT_ACCESS_TTL_SECONDS/);
     }
     expect(validateEnvironment({ ...validEnv, JWT_ACCESS_TTL_SECONDS: '600' }).JWT_ACCESS_TTL_SECONDS).toBe(600);
+  });
+
+  it('requires independent refresh JWT settings and bounds the sliding lifetime', () => {
+    expect(validateEnvironment(validEnv).JWT_REFRESH_TTL_SECONDS).toBe(604800);
+    expect(validateEnvironment(validEnv).JWT_REFRESH_AUDIENCE).toBe('fo-ecbe-refresh');
+    for (const secret of [undefined, 'short', validEnv.JWT_ACCESS_SECRET]) {
+      expect(() => validateEnvironment({ ...validEnv, JWT_REFRESH_SECRET: secret })).toThrow();
+    }
+    for (const ttl of ['59', '2592001', '1.5']) {
+      expect(() => validateEnvironment({ ...validEnv, JWT_REFRESH_TTL_SECONDS: ttl })).toThrow(/JWT_REFRESH_TTL_SECONDS/);
+    }
+    expect(() => validateEnvironment({ ...validEnv, JWT_REFRESH_AUDIENCE: 'fo-ecbe-api' })).toThrow();
+  });
+
+  it.each(['test', 'production'])('rejects missing, short, or equal JWT secrets in %s', (nodeEnv) => {
+    const env: Record<string, string> = { ...validEnv, NODE_ENV: nodeEnv };
+    expect(validateEnvironment(env).NODE_ENV).toBe(nodeEnv);
+    expect(() => validateEnvironment({ ...env, JWT_ACCESS_SECRET: undefined })).toThrow(/JWT_ACCESS_SECRET/);
+    expect(() => validateEnvironment({ ...env, JWT_REFRESH_SECRET: undefined })).toThrow(/JWT_REFRESH_SECRET/);
+    expect(() => validateEnvironment({ ...env, JWT_ACCESS_SECRET: 'short' })).toThrow(/JWT_ACCESS_SECRET/);
+    expect(() => validateEnvironment({ ...env, JWT_REFRESH_SECRET: 'short' })).toThrow(/JWT_REFRESH_SECRET/);
+    expect(() => validateEnvironment({ ...env, JWT_REFRESH_SECRET: env.JWT_ACCESS_SECRET }))
+      .toThrow('JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must differ');
   });
 });

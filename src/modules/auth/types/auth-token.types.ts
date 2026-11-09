@@ -4,6 +4,11 @@ export interface LoginResponse {
   expiresIn: number;
 }
 
+export interface TokenPairResponse extends LoginResponse {
+  refreshToken: string;
+  refreshExpiresIn: number;
+}
+
 export interface AccessTokenClaims {
   sub: string;
   roleCodes: string[];

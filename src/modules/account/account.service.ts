@@ -1,4 +1,4 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { BaseServiceAbstract } from '../../core/service/base-service.abstract.js';
 import { ACCOUNT_REPOSITORY } from './account.constants.js';
 import type { AccountRepositoryInterface } from './contracts/account-repository.interface.js';
@@ -31,11 +31,18 @@ export class AccountService extends BaseServiceAbstract<AccountRecord, never, Up
     return this.accounts.create(data);
   }
 
-  updateAccount(id: string, input: UpdateAccountInput): Promise<AccountRecord> {
+  async updateAccount(id: string, input: UpdateAccountInput): Promise<AccountRecord> {
     const data: UpdateAccountData = {};
     if (input.email !== undefined) data.email = normalizeEmail(input.email);
     if (input.phone !== undefined) data.phone = input.phone;
-    return this.update(id, data);
+    try {
+      return await this.update(id, data);
+    } catch (error) {
+      if ((error as { driverError?: { code?: string } }).driverError?.code === '23505') {
+        throw new ConflictException('Account value already exists');
+      }
+      throw error;
+    }
   }
 
   override update(id: string, data: UpdateAccountInput): Promise<AccountRecord> {
