@@ -181,6 +181,16 @@ describe('Marketplace ownership and order foundation (PostgreSQL e2e)', () => {
       .set('Authorization', bearer(sellerB)).send({ quantity: 5 }).expect(403);
     await request(app.getHttpServer()).post(`/stores/${storeAId}/inventory/${variantId}`)
       .set('Authorization', bearer(sellerA)).send({ quantity: 5 }).expect(201);
+    await source.query('UPDATE inventories SET quantity = 2147483647 WHERE store_id = $1 AND product_variant_id = $2', [storeAId, variantId]);
+    await request(app.getHttpServer()).patch(`/stores/${storeAId}/inventory/${variantId}/adjust`)
+      .set('Authorization', bearer(sellerA)).send({ delta: 1 }).expect(409);
+    const [maxStock] = await source.query('SELECT quantity FROM inventories WHERE store_id = $1 AND product_variant_id = $2',
+      [storeAId, variantId]) as Array<{ quantity: number }>;
+    expect(maxStock.quantity).toBe(2147483647);
+    await source.query('UPDATE inventories SET quantity = 0 WHERE store_id = $1 AND product_variant_id = $2', [storeAId, variantId]);
+    await request(app.getHttpServer()).patch(`/stores/${storeAId}/inventory/${variantId}/adjust`)
+      .set('Authorization', bearer(sellerA)).send({ delta: -1 }).expect(409);
+    await source.query('UPDATE inventories SET quantity = 5 WHERE store_id = $1 AND product_variant_id = $2', [storeAId, variantId]);
     await expect(source.query('INSERT INTO inventories (store_id, product_variant_id, quantity) VALUES ($1, $2, 1)',
       [storeBId, variantId])).rejects.toMatchObject({ driverError: { code: '23514' } });
     await expect(source.query('UPDATE products SET store_id = $1 WHERE id = $2', [storeBId, productId]))
