@@ -22,9 +22,10 @@ export class InventoryRepository implements InventoryRepositoryInterface {
   }
   async adjust(storeId: string, variantId: string, delta: number): Promise<InventoryRecord | null> {
     const result = await this.inventories.createQueryBuilder().update(InventoryEntity)
-      .set({ quantity: () => 'quantity + :delta', updatedAt: () => 'now()' })
+      .set({ quantity: () => 'CAST(CAST(quantity AS bigint) + CAST(:delta AS bigint) AS integer)', updatedAt: () => 'now()' })
       .where('store_id = :storeId AND product_variant_id = :variantId', { storeId, variantId })
-      .andWhere('quantity + :delta >= 0 AND quantity + :delta <= 2147483647', { delta })
+      .andWhere('CAST(quantity AS bigint) + CAST(:delta AS bigint) BETWEEN 0 AND 2147483647')
+      .setParameter('delta', delta)
       .execute();
     return result.affected === 1 ? this.find(storeId, variantId) : null;
   }
