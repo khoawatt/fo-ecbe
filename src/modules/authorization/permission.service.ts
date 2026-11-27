@@ -9,6 +9,6 @@ export class PermissionService {
   async hasAll(roleCodes: string[], required: string[]): Promise<boolean> {
     if (!required.length) return true;
     const granted = await this.repository.findCodesForRoles(roleCodes);
-    return required.every(code => granted.includes(code));
+    return required.every((code) => granted.includes(code));
   }
 }

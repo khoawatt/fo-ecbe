@@ -22,7 +22,7 @@ Status: **Passed — Project Audit**
 `AccountService.getAllAccounts()` and Dish list logic can wrap an already-serialized collection again:
 
 ```ts
-items: [dataSerialized]
+items: [dataSerialized];
 ```
 
 If `dataSerialized` is already an array, the API can return `items: [[...]]` instead of `items: [...]`.
@@ -34,7 +34,7 @@ Decision: **REFACTOR** response shaping and protect status/body/pagination with 
 Services throw plain errors such as:
 
 ```ts
-throw new Error('Account not found')
+throw new Error('Account not found');
 ```
 
 The global exception filter only derives structured HTTP details inside the `HttpException` branch. Plain errors therefore do not produce a reliable status/error contract.

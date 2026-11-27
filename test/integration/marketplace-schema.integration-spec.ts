@@ -42,37 +42,68 @@ describe('Marketplace migrations and TypeORM metadata (PostgreSQL)', () => {
     schema = `marketplace_schema_${randomUUID().replaceAll('-', '')}`;
     const runner = AppDataSource.createQueryRunner();
     await runner.connect();
-    const migrations = [new CreateAccountRbacFoundation1791280000000(), new AddRbacCanonicalization1793874600000(),
-      new CreateAccountSessions1794050000000(), new CreateBusinessProfiles1794051000000(), new CreateStores1794052000000(),
-      new CreateCatalog1794053000000(), new CreateInventories1794054000000(), new CreateOrders1794055000000()];
+    const migrations = [
+      new CreateAccountRbacFoundation1791280000000(),
+      new AddRbacCanonicalization1793874600000(),
+      new CreateAccountSessions1794050000000(),
+      new CreateBusinessProfiles1794051000000(),
+      new CreateStores1794052000000(),
+      new CreateCatalog1794053000000(),
+      new CreateInventories1794054000000(),
+      new CreateOrders1794055000000()
+    ];
     try {
       await runner.query(`CREATE SCHEMA "${schema}"`);
       await runner.query(`SET search_path TO "${schema}", public`);
       await runner.startTransaction();
       for (const migration of migrations) await migration.up(runner);
       for (const migration of migrations.slice(3).reverse()) await migration.down(runner);
-      const [base] = await runner.query("SELECT count(*)::int AS count FROM information_schema.tables WHERE table_schema = $1 AND table_name = 'accounts'", [schema]) as Array<{ count: number }>;
+      const [base] = (await runner.query(
+        "SELECT count(*)::int AS count FROM information_schema.tables WHERE table_schema = $1 AND table_name = 'accounts'",
+        [schema]
+      )) as Array<{ count: number }>;
       expect(base.count).toBe(1);
       for (const migration of migrations.slice(3)) await migration.up(runner);
       await runner.commitTransaction();
     } catch (error) {
       if (runner.isTransactionActive) await runner.rollbackTransaction();
       throw error;
-    } finally { await runner.release(); }
+    } finally {
+      await runner.release();
+    }
     const options = AppDataSource.options;
     if (options.type !== 'postgres') throw new Error('PostgreSQL required');
-    const source = new DataSource({ ...options, schema: undefined,
-      entities: [AccountEntity, AccountRoleEntity, AccountSessionEntity, PermissionEntity, RoleEntity, RolePermissionEntity,
-        CustomerProfileEntity, SellerProfileEntity, StoreEntity, ProductEntity, ProductVariantEntity, InventoryEntity,
-        OrderEntity, OrderItemEntity], migrations: [],
-      extra: { ...(options.extra ?? {}), options: `-c search_path="${schema}",public` } });
+    const source = new DataSource({
+      ...options,
+      schema: undefined,
+      entities: [
+        AccountEntity,
+        AccountRoleEntity,
+        AccountSessionEntity,
+        PermissionEntity,
+        RoleEntity,
+        RolePermissionEntity,
+        CustomerProfileEntity,
+        SellerProfileEntity,
+        StoreEntity,
+        ProductEntity,
+        ProductVariantEntity,
+        InventoryEntity,
+        OrderEntity,
+        OrderItemEntity
+      ],
+      migrations: [],
+      extra: { ...(options.extra ?? {}), options: `-c search_path="${schema}",public` }
+    });
     await source.initialize();
     try {
-      const [connection] = await source.query('SELECT current_schema() AS name') as Array<{ name: string }>;
+      const [connection] = (await source.query('SELECT current_schema() AS name')) as Array<{ name: string }>;
       expect(connection.name).toBe(schema);
       const diff = await source.driver.createSchemaBuilder().log();
       expect(diff.upQueries).toEqual([]);
       expect(diff.downQueries).toEqual([]);
-    } finally { await source.destroy(); }
+    } finally {
+      await source.destroy();
+    }
   }, 30_000);
 });

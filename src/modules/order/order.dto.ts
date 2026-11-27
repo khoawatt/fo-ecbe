@@ -6,6 +6,10 @@ export class OrderLineDto {
 }
 export class CreateOrderDto {
   @IsUUID() storeId!: string;
-  @IsArray() @ArrayMinSize(1) @ArrayMaxSize(100) @ValidateNested({ each: true }) @Type(() => OrderLineDto)
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => OrderLineDto)
   items!: OrderLineDto[];
 }

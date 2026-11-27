@@ -9,17 +9,15 @@ const TypeOrmCliSmokeEntity = new EntitySchema({
     id: {
       type: Number,
       primary: true,
-      generated: true,
+      generated: true
     },
     value: {
-      type: String,
-    },
-  },
+      type: String
+    }
+  }
 });
 
-const migrations = process.env.TYPEORM_SMOKE_MIGRATIONS
-  ? [process.env.TYPEORM_SMOKE_MIGRATIONS]
-  : [];
+const migrations = process.env.TYPEORM_SMOKE_MIGRATIONS ? [process.env.TYPEORM_SMOKE_MIGRATIONS] : [];
 
 export default new DataSource({
   type: 'postgres',
@@ -31,5 +29,5 @@ export default new DataSource({
   entities: [TypeOrmCliSmokeEntity],
   migrations,
   migrationsTableName: 'fo014_cli_smoke_migrations',
-  synchronize: false,
+  synchronize: false
 });

@@ -26,13 +26,13 @@ Each Order belongs to one customer Account and one Store. Creation is allowed on
 
 ## HTTP endpoints
 
-| Resource | Endpoints |
-| --- | --- |
-| Customer profile | `GET/POST/PATCH /customer/me` |
-| Seller onboarding | `GET /seller/me`, `POST /seller/apply`, ADMIN `PATCH /seller/:id/approve`, `PATCH /seller/:id/reject` |
-| Store | `GET /stores/:id`, seller `GET /stores/mine`, `POST /stores`, `PATCH /stores/:id` |
-| Catalog | `GET /catalog/stores/:storeId/products`, `GET /catalog/products/:id`, `GET /catalog/variants/:id`, seller `POST /catalog/stores/:storeId/products`, `PATCH /catalog/products/:id`, `POST /catalog/products/:id/variants`, `PATCH /catalog/variants/:id` |
-| Inventory | seller `GET/POST /stores/:storeId/inventory/:variantId`, `PATCH /stores/:storeId/inventory/:variantId/adjust` |
-| Order | `POST /orders`, buyer `GET /orders/me`, `GET /orders/:id`, seller `GET /orders/stores/:storeId/:id` |
+| Resource          | Endpoints                                                                                                                                                                                                                                               |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Customer profile  | `GET/POST/PATCH /customer/me`                                                                                                                                                                                                                           |
+| Seller onboarding | `GET /seller/me`, `POST /seller/apply`, ADMIN `PATCH /seller/:id/approve`, `PATCH /seller/:id/reject`                                                                                                                                                   |
+| Store             | `GET /stores/:id`, seller `GET /stores/mine`, `POST /stores`, `PATCH /stores/:id`                                                                                                                                                                       |
+| Catalog           | `GET /catalog/stores/:storeId/products`, `GET /catalog/products/:id`, `GET /catalog/variants/:id`, seller `POST /catalog/stores/:storeId/products`, `PATCH /catalog/products/:id`, `POST /catalog/products/:id/variants`, `PATCH /catalog/variants/:id` |
+| Inventory         | seller `GET/POST /stores/:storeId/inventory/:variantId`, `PATCH /stores/:storeId/inventory/:variantId/adjust`                                                                                                                                           |
+| Order             | `POST /orders`, buyer `GET /orders/me`, `GET /orders/:id`, seller `GET /orders/stores/:storeId/:id`                                                                                                                                                     |
 
 All HTTP JSON uses camelCase; PostgreSQL uses snake_case. The five additive marketplace migrations follow AccountSession: business profiles, Stores, catalog, inventory, and Orders.

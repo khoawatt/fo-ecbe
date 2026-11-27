@@ -12,7 +12,9 @@ import { ProfileService } from './profile.service.js';
 export class CustomerProfileController {
   constructor(private readonly profiles: ProfileService) {}
   @Get('me')
-  me(@Req() req: Request & { user: AuthenticatedPrincipal }) { return this.profiles.customerForAccount(req.user.id); }
+  me(@Req() req: Request & { user: AuthenticatedPrincipal }) {
+    return this.profiles.customerForAccount(req.user.id);
+  }
   @Post('me')
   create(@Req() req: Request & { user: AuthenticatedPrincipal }, @Body() body: CustomerProfileCreateDto) {
     return this.profiles.createCustomer(req.user.id, body);
@@ -28,15 +30,21 @@ export class CustomerProfileController {
 export class SellerProfileController {
   constructor(private readonly profiles: ProfileService) {}
   @Get('me')
-  me(@Req() req: Request & { user: AuthenticatedPrincipal }) { return this.profiles.sellerForAccount(req.user.id); }
+  me(@Req() req: Request & { user: AuthenticatedPrincipal }) {
+    return this.profiles.sellerForAccount(req.user.id);
+  }
   @Post('apply')
   apply(@Req() req: Request & { user: AuthenticatedPrincipal }, @Body() body: SellerApplicationDto) {
     return this.profiles.applySeller(req.user.id, body.displayName);
   }
   @Patch(':id/approve')
   @Roles('ADMIN')
-  approve(@Param('id', ParseUUIDPipe) id: string) { return this.profiles.reviewSeller(id, true); }
+  approve(@Param('id', ParseUUIDPipe) id: string) {
+    return this.profiles.reviewSeller(id, true);
+  }
   @Patch(':id/reject')
   @Roles('ADMIN')
-  reject(@Param('id', ParseUUIDPipe) id: string) { return this.profiles.reviewSeller(id, false); }
+  reject(@Param('id', ParseUUIDPipe) id: string) {
+    return this.profiles.reviewSeller(id, false);
+  }
 }

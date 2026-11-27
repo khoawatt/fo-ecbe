@@ -1,14 +1,10 @@
 import type { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateAccountRbacFoundation1791280000000
-  implements MigrationInterface
-{
+export class CreateAccountRbacFoundation1791280000000 implements MigrationInterface {
   name = 'CreateAccountRbacFoundation1791280000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`,
-    );
+    await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
 
     await queryRunner.query(`
       CREATE TABLE "accounts" (

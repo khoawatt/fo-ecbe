@@ -144,29 +144,29 @@ Bearer JWT
 
 ## 4. Migration inventory
 
-| Area / capability | Current location | Capability needed? | Classification | Migration risk / note |
-|---|---|---:|---|---|
-| NestJS bootstrap / modules | `src/main.ts`, `src/app.module.ts` | Yes | MIGRATE / REFACTOR | Preserve modular behavior, rebuild target bootstrap cleanly |
-| PostgreSQL | TypeORM config / migrations | Yes | KEEP | Initial target database |
-| TypeORM | config / repositories | Yes for current phase | KEEP | Must remain below repository boundary |
-| Generic repository contracts | base repository files | Yes | REFACTOR | Remove TypeORM types from public interfaces |
-| Generic service abstraction | base service files | Yes by project decision | REFACTOR | Keep generic behavior, no ORM imports |
-| Feature repositories | Account/Dish repository layer | Yes | REFACTOR | Use feature-owned contracts and Symbol DI tokens |
-| Authentication | Auth module | Yes | MIGRATE / REFACTOR | Preserve behavior; remove duplicate lookup / normalize hashing |
-| Refresh-token state | AuthService + Account | Yes | MIGRATE / REFACTOR | Preserve hashed server-side refresh-token verification |
-| RBAC | RolesGuard / decorators | Yes | REWRITE policy/wiring | Current Account authorization is unsafe |
-| Account self-service | Account module | Yes | MIGRATE / REFACTOR | Use authenticated subject ID |
-| Account administration | Account controller | Yes | REWRITE | ADMIN-only target policy |
-| Dish capability | Dish module | Yes | MIGRATE / REFACTOR | Fix auth, contract, lifecycle |
-| Order / DishSnapshot model | entities / migrations | Yes later | REVIEW / REFACTOR | Current one-to-one constraint may not reflect domain |
-| Media upload | Media module | Yes if product still requires it | REFACTOR / DEFER | Local filesystem implementation and swallowed errors should not be copied blindly |
-| Response envelope / pagination | interceptor + services | Yes | REFACTOR | Nested-array bug and contract risk |
-| Global exception handling | global filter | Yes | REFACTOR | Plain Error does not map to deterministic contract |
-| Environment config | ConfigModule + `.env.example` | Yes | REWRITE | Mongo/Postgres and variable-name drift |
-| Mongoose / Mongo remnants | dependencies / shared base code | No | DROP | Stale legacy dependency surface |
-| Password hashing libraries | bcrypt + bcryptjs | Yes, one implementation | REFACTOR | Standardize one library/config |
-| Legacy E2E baseline | `test/app.e2e-spec.ts` | No as meaningful baseline | DROP / REPLACE | Hello World does not protect critical behavior |
-| CI build/deploy concept | `.gitlab-ci.yml` | Yes | MIGRATE concept / REWRITE pipeline | Add executable quality gates |
+| Area / capability              | Current location                   |               Capability needed? | Classification                     | Migration risk / note                                                             |
+| ------------------------------ | ---------------------------------- | -------------------------------: | ---------------------------------- | --------------------------------------------------------------------------------- |
+| NestJS bootstrap / modules     | `src/main.ts`, `src/app.module.ts` |                              Yes | MIGRATE / REFACTOR                 | Preserve modular behavior, rebuild target bootstrap cleanly                       |
+| PostgreSQL                     | TypeORM config / migrations        |                              Yes | KEEP                               | Initial target database                                                           |
+| TypeORM                        | config / repositories              |            Yes for current phase | KEEP                               | Must remain below repository boundary                                             |
+| Generic repository contracts   | base repository files              |                              Yes | REFACTOR                           | Remove TypeORM types from public interfaces                                       |
+| Generic service abstraction    | base service files                 |          Yes by project decision | REFACTOR                           | Keep generic behavior, no ORM imports                                             |
+| Feature repositories           | Account/Dish repository layer      |                              Yes | REFACTOR                           | Use feature-owned contracts and Symbol DI tokens                                  |
+| Authentication                 | Auth module                        |                              Yes | MIGRATE / REFACTOR                 | Preserve behavior; remove duplicate lookup / normalize hashing                    |
+| Refresh-token state            | AuthService + Account              |                              Yes | MIGRATE / REFACTOR                 | Preserve hashed server-side refresh-token verification                            |
+| RBAC                           | RolesGuard / decorators            |                              Yes | REWRITE policy/wiring              | Current Account authorization is unsafe                                           |
+| Account self-service           | Account module                     |                              Yes | MIGRATE / REFACTOR                 | Use authenticated subject ID                                                      |
+| Account administration         | Account controller                 |                              Yes | REWRITE                            | ADMIN-only target policy                                                          |
+| Dish capability                | Dish module                        |                              Yes | MIGRATE / REFACTOR                 | Fix auth, contract, lifecycle                                                     |
+| Order / DishSnapshot model     | entities / migrations              |                        Yes later | REVIEW / REFACTOR                  | Current one-to-one constraint may not reflect domain                              |
+| Media upload                   | Media module                       | Yes if product still requires it | REFACTOR / DEFER                   | Local filesystem implementation and swallowed errors should not be copied blindly |
+| Response envelope / pagination | interceptor + services             |                              Yes | REFACTOR                           | Nested-array bug and contract risk                                                |
+| Global exception handling      | global filter                      |                              Yes | REFACTOR                           | Plain Error does not map to deterministic contract                                |
+| Environment config             | ConfigModule + `.env.example`      |                              Yes | REWRITE                            | Mongo/Postgres and variable-name drift                                            |
+| Mongoose / Mongo remnants      | dependencies / shared base code    |                               No | DROP                               | Stale legacy dependency surface                                                   |
+| Password hashing libraries     | bcrypt + bcryptjs                  |          Yes, one implementation | REFACTOR                           | Standardize one library/config                                                    |
+| Legacy E2E baseline            | `test/app.e2e-spec.ts`             |        No as meaningful baseline | DROP / REPLACE                     | Hello World does not protect critical behavior                                    |
+| CI build/deploy concept        | `.gitlab-ci.yml`                   |                              Yes | MIGRATE concept / REWRITE pipeline | Add executable quality gates                                                      |
 
 ---
 
@@ -321,7 +321,7 @@ Use one role representation across DTO/domain, DB, JWT payload, `request.user`, 
 Account/Dish list transformation wraps a serialized collection again:
 
 ```ts
-items: [dataSerialized]
+items: [dataSerialized];
 ```
 
 **Impact**

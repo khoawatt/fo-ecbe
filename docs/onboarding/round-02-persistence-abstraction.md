@@ -355,7 +355,7 @@ Không phải `AccountRepository` trước.
 `AccountRepository` ít nhất còn có chỗ cho domain-specific query:
 
 ```ts
-findByEmail(email)
+findByEmail(email);
 ```
 
 Candidate đáng điều tra là bộ generic:
@@ -496,7 +496,7 @@ Prisma / TypeORM / bất kỳ persistence implementation nào
 Ví dụ thay vì để service biết:
 
 ```ts
-FindManyOptions<Account>
+FindManyOptions<Account>;
 ```
 
 contract của mình có thể là kiểu:

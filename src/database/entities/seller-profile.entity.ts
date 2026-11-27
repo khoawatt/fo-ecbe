@@ -1,7 +1,22 @@
-import { Check, Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Check,
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn
+} from 'typeorm';
 import { AccountEntity } from './account.entity.js';
 
-export enum SellerVerificationStatus { PENDING = 'PENDING', APPROVED = 'APPROVED', REJECTED = 'REJECTED', SUSPENDED = 'SUSPENDED' }
+export enum SellerVerificationStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  SUSPENDED = 'SUSPENDED'
+}
 
 @Entity({ name: 'seller_profiles' })
 @Check('ck_seller_profiles_status', "verification_status IN ('PENDING', 'APPROVED', 'REJECTED', 'SUSPENDED')")

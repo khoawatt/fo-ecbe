@@ -6,7 +6,7 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  Unique,
+  Unique
 } from 'typeorm';
 
 import { AccountEntity } from './account.entity.js';
@@ -20,35 +20,35 @@ export class AccountRoleEntity {
   id!: string;
 
   @Column({
-    type: 'uuid',
+    type: 'uuid'
   })
   accountId!: string;
 
   @Column({
-    type: 'uuid',
+    type: 'uuid'
   })
   roleId!: string;
 
   @ManyToOne(() => AccountEntity, {
-    onDelete: 'CASCADE',
+    onDelete: 'CASCADE'
   })
   @JoinColumn({
     name: 'account_id',
-    foreignKeyConstraintName: 'fk_account_roles_account_id',
+    foreignKeyConstraintName: 'fk_account_roles_account_id'
   })
   account!: AccountEntity;
 
   @ManyToOne(() => RoleEntity, {
-    onDelete: 'CASCADE',
+    onDelete: 'CASCADE'
   })
   @JoinColumn({
     name: 'role_id',
-    foreignKeyConstraintName: 'fk_account_roles_role_id',
+    foreignKeyConstraintName: 'fk_account_roles_role_id'
   })
   role!: RoleEntity;
 
   @CreateDateColumn({
-    type: 'timestamptz',
+    type: 'timestamptz'
   })
   createdAt!: Date;
 }

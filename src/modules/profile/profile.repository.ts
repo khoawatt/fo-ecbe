@@ -44,16 +44,23 @@ export class ProfileRepository implements ProfileRepositoryInterface {
     return this.seller(await this.sellers.save(this.sellers.create({ accountId, displayName })));
   }
   async reapplySeller(accountId: string, displayName: string): Promise<SellerProfileRecord | null> {
-    const result = await this.sellers.createQueryBuilder().update(SellerProfileEntity)
+    const result = await this.sellers
+      .createQueryBuilder()
+      .update(SellerProfileEntity)
       .set({ displayName, verificationStatus: SellerVerificationStatus.PENDING })
-      .where('account_id = :accountId AND verification_status = :status', { accountId, status: SellerVerificationStatus.REJECTED })
+      .where('account_id = :accountId AND verification_status = :status', {
+        accountId,
+        status: SellerVerificationStatus.REJECTED
+      })
       .execute();
     return result.affected === 1 ? this.seller((await this.sellers.findOneBy({ accountId }))!) : null;
   }
   async reviewSeller(id: string, approve: boolean): Promise<SellerProfileRecord | null> {
-    return this.source.transaction(async manager => {
+    return this.source.transaction(async (manager) => {
       const status = approve ? SellerVerificationStatus.APPROVED : SellerVerificationStatus.REJECTED;
-      const updated = await manager.createQueryBuilder().update(SellerProfileEntity)
+      const updated = await manager
+        .createQueryBuilder()
+        .update(SellerProfileEntity)
         .set({ verificationStatus: status })
         .where('id = :id AND verification_status = :pending', { id, pending: SellerVerificationStatus.PENDING })
         .execute();
@@ -61,7 +68,10 @@ export class ProfileRepository implements ProfileRepositoryInterface {
       const row = await manager.findOneByOrFail(SellerProfileEntity, { id });
       if (approve) {
         await manager.query("INSERT INTO roles (code, name) VALUES ('SELLER', 'Seller') ON CONFLICT (code) DO NOTHING");
-        await manager.query("INSERT INTO account_roles (account_id, role_id) SELECT $1, id FROM roles WHERE code = 'SELLER' ON CONFLICT (account_id, role_id) DO NOTHING", [row.accountId]);
+        await manager.query(
+          "INSERT INTO account_roles (account_id, role_id) SELECT $1, id FROM roles WHERE code = 'SELLER' ON CONFLICT (account_id, role_id) DO NOTHING",
+          [row.accountId]
+        );
       }
       return this.seller(row);
     });

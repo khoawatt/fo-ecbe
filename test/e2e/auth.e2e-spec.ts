@@ -45,7 +45,9 @@ class PermissionProbeController {
   @Get()
   @Permissions('account:read')
   @UseGuards(JwtAccessTokenGuard, PermissionGuard)
-  read() { return { allowed: true }; }
+  read() {
+    return { allowed: true };
+  }
 }
 
 describe('Local login and access JWT (PostgreSQL e2e)', () => {
@@ -63,10 +65,11 @@ describe('Local login and access JWT (PostgreSQL e2e)', () => {
     const outgoing = request(app.getHttpServer()).get('/auth-probe');
     return token ? outgoing.set('Authorization', `Bearer ${token}`) : outgoing;
   };
-  const signer = (signingSecret = secret) => new JwtService({
-    secret: signingSecret,
-    signOptions: { algorithm: 'HS256', issuer: 'fo-ecbe', audience: 'fo-ecbe-api', expiresIn: 900 }
-  });
+  const signer = (signingSecret = secret) =>
+    new JwtService({
+      secret: signingSecret,
+      signOptions: { algorithm: 'HS256', issuer: 'fo-ecbe', audience: 'fo-ecbe-api', expiresIn: 900 }
+    });
   const claims = () => ({ sub: accountId, roleCodes: ['ADMIN', 'SELLER'], tokenType: 'access' });
 
   beforeAll(async () => {
@@ -98,7 +101,14 @@ describe('Local login and access JWT (PostgreSQL e2e)', () => {
         AppConfigModule,
         TypeOrmModule.forRoot({
           ...options,
-          entities: [AccountEntity, AccountRoleEntity, AccountSessionEntity, PermissionEntity, RoleEntity, RolePermissionEntity],
+          entities: [
+            AccountEntity,
+            AccountRoleEntity,
+            AccountSessionEntity,
+            PermissionEntity,
+            RoleEntity,
+            RolePermissionEntity
+          ],
           migrations: [],
           extra: { ...(options.extra ?? {}), options: `-c search_path="${schema}",public` }
         }),
@@ -116,13 +126,23 @@ describe('Local login and access JWT (PostgreSQL e2e)', () => {
   }, 30_000);
 
   beforeEach(async () => {
-    await dataSource.query('TRUNCATE TABLE account_sessions, account_roles, role_permissions, roles, permissions, accounts RESTART IDENTITY CASCADE');
+    await dataSource.query(
+      'TRUNCATE TABLE account_sessions, account_roles, role_permissions, roles, permissions, accounts RESTART IDENTITY CASCADE'
+    );
     const account = await accountService.createAccount({ email: 'User@Example.COM', password });
     accountId = account.id;
     await accountService.setAccountStatus(account.id, AccountStatus.ACTIVE);
-    const [admin] = await dataSource.query("INSERT INTO roles (code, name) VALUES ('ADMIN', 'Administrator') RETURNING id") as Array<{ id: string }>;
-    const [seller] = await dataSource.query("INSERT INTO roles (code, name) VALUES ('SELLER', 'Seller') RETURNING id") as Array<{ id: string }>;
-    await dataSource.query('INSERT INTO account_roles (account_id, role_id) VALUES ($1, $2), ($1, $3)', [account.id, seller?.id, admin?.id]);
+    const [admin] = (await dataSource.query(
+      "INSERT INTO roles (code, name) VALUES ('ADMIN', 'Administrator') RETURNING id"
+    )) as Array<{ id: string }>;
+    const [seller] = (await dataSource.query(
+      "INSERT INTO roles (code, name) VALUES ('SELLER', 'Seller') RETURNING id"
+    )) as Array<{ id: string }>;
+    await dataSource.query('INSERT INTO account_roles (account_id, role_id) VALUES ($1, $2), ($1, $3)', [
+      account.id,
+      seller?.id,
+      admin?.id
+    ]);
   });
 
   afterAll(async () => {
@@ -134,20 +154,28 @@ describe('Local login and access JWT (PostgreSQL e2e)', () => {
   }, 30_000);
 
   it('logs in once and carries ordered canonical roles through a signed access token', async () => {
-    const membershipBefore = await dataSource.query('SELECT role_id FROM account_roles WHERE account_id = $1', [accountId]) as unknown[];
+    const membershipBefore = (await dataSource.query('SELECT role_id FROM account_roles WHERE account_id = $1', [
+      accountId
+    ])) as unknown[];
     const response = await login().expect(200);
     expect(response.body).toMatchObject({ tokenType: 'Bearer', expiresIn: 900 });
     expect(typeof response.body.accessToken).toBe('string');
     expect(JSON.stringify(response.body)).not.toContain('passwordHash');
     expect(JSON.stringify(response.body)).not.toContain(password);
     const payload = await signer().verifyAsync<Record<string, unknown>>(response.body.accessToken as string, {
-      algorithms: ['HS256'], issuer: 'fo-ecbe', audience: 'fo-ecbe-api'
+      algorithms: ['HS256'],
+      issuer: 'fo-ecbe',
+      audience: 'fo-ecbe-api'
     });
     expect(Object.keys(payload).sort()).toEqual(['aud', 'exp', 'iat', 'iss', 'roleCodes', 'sub', 'tokenType']);
     expect(payload).toMatchObject({ sub: accountId, roleCodes: ['ADMIN', 'SELLER'], tokenType: 'access' });
-    await protectedRequest(response.body.accessToken as string).expect(200).expect({ id: accountId, roleCodes: ['ADMIN', 'SELLER'] });
+    await protectedRequest(response.body.accessToken as string)
+      .expect(200)
+      .expect({ id: accountId, roleCodes: ['ADMIN', 'SELLER'] });
     expect((await accountService.findById(accountId)).status).toBe(AccountStatus.ACTIVE);
-    expect(await dataSource.query('SELECT role_id FROM account_roles WHERE account_id = $1', [accountId])).toEqual(membershipBefore);
+    expect(await dataSource.query('SELECT role_id FROM account_roles WHERE account_id = $1', [accountId])).toEqual(
+      membershipBefore
+    );
   });
 
   it('returns the same 401 for unknown email, wrong password and inactive accounts', async () => {
@@ -167,9 +195,18 @@ describe('Local login and access JWT (PostgreSQL e2e)', () => {
   it('rejects malformed login fields and unexpected JSON properties', async () => {
     await request(app.getHttpServer()).post('/auth/login').send({ password }).expect(401);
     await request(app.getHttpServer()).post('/auth/login').send({ email: 'user@example.com' }).expect(401);
-    await request(app.getHttpServer()).post('/auth/login').send({ email: { bad: true }, password }).expect(401);
-    await request(app.getHttpServer()).post('/auth/login').send({ email: 'user@example.com', password: { bad: true } }).expect(401);
-    await request(app.getHttpServer()).post('/auth/login').send({ email: 'user@example.com', password, unexpected: true }).expect(400);
+    await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: { bad: true }, password })
+      .expect(401);
+    await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: 'user@example.com', password: { bad: true } })
+      .expect(401);
+    await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: 'user@example.com', password, unexpected: true })
+      .expect(400);
   });
 
   it('rejects missing, malformed, forged, expired and wrong-type access tokens', async () => {
@@ -192,7 +229,9 @@ describe('Local login and access JWT (PostgreSQL e2e)', () => {
     const response = await login().expect(200);
     await dataSource.destroy();
     try {
-      await protectedRequest(response.body.accessToken as string).expect(200).expect({ id: accountId, roleCodes: ['ADMIN', 'SELLER'] });
+      await protectedRequest(response.body.accessToken as string)
+        .expect(200)
+        .expect({ id: accountId, roleCodes: ['ADMIN', 'SELLER'] });
     } finally {
       await dataSource.initialize();
     }
@@ -204,64 +243,99 @@ describe('Local login and access JWT (PostgreSQL e2e)', () => {
     const firstToken = first.body.refreshToken as string;
     const secondToken = second.body.refreshToken as string;
     expect(firstToken).not.toBe(secondToken);
-    const rows = await dataSource.query('SELECT refresh_token_hash FROM account_sessions WHERE account_id = $1', [accountId]) as Array<{ refresh_token_hash: string }>;
+    const rows = (await dataSource.query('SELECT refresh_token_hash FROM account_sessions WHERE account_id = $1', [
+      accountId
+    ])) as Array<{ refresh_token_hash: string }>;
     expect(rows).toHaveLength(2);
-    expect(rows.every(row => /^[a-f0-9]{64}$/.test(row.refresh_token_hash))).toBe(true);
-    expect(rows.every(row => row.refresh_token_hash !== firstToken && row.refresh_token_hash !== secondToken)).toBe(true);
+    expect(rows.every((row) => /^[a-f0-9]{64}$/.test(row.refresh_token_hash))).toBe(true);
+    expect(rows.every((row) => row.refresh_token_hash !== firstToken && row.refresh_token_hash !== secondToken)).toBe(
+      true
+    );
 
-    const rotated = await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: firstToken }).expect(200);
+    const rotated = await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refreshToken: firstToken })
+      .expect(200);
     expect(rotated.body.refreshToken).not.toBe(firstToken);
     await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: firstToken }).expect(401);
-    await request(app.getHttpServer()).post('/auth/logout').send({ refreshToken: rotated.body.refreshToken }).expect(204);
-    await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: rotated.body.refreshToken }).expect(401);
+    await request(app.getHttpServer())
+      .post('/auth/logout')
+      .send({ refreshToken: rotated.body.refreshToken })
+      .expect(204);
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refreshToken: rotated.body.refreshToken })
+      .expect(401);
     await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: secondToken }).expect(200);
   });
 
   it('allows exactly one concurrent rotation of the same refresh token', async () => {
     const initial = await login().expect(200);
     const token = initial.body.refreshToken as string;
-    const results = await Promise.all(Array.from({ length: 2 }, () =>
-      request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: token })
-    ));
-    expect(results.map(result => result.status).sort()).toEqual([200, 401]);
+    const results = await Promise.all(
+      Array.from({ length: 2 }, () => request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: token }))
+    );
+    expect(results.map((result) => result.status).sort()).toEqual([200, 401]);
   });
 
   it('rejects refresh for inactive and soft-deleted accounts', async () => {
     const initial = await login().expect(200);
     for (const status of [AccountStatus.PENDING, AccountStatus.SUSPENDED, AccountStatus.DISABLED]) {
       await accountService.setAccountStatus(accountId, status);
-      await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: initial.body.refreshToken }).expect(401);
+      await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({ refreshToken: initial.body.refreshToken })
+        .expect(401);
     }
     await accountService.remove(accountId);
-    await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: initial.body.refreshToken }).expect(401);
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refreshToken: initial.body.refreshToken })
+      .expect(401);
   });
 
   it.each([AccountStatus.DISABLED, AccountStatus.SUSPENDED, AccountStatus.PENDING])(
-    'permanently revokes every session on ACTIVE to %s', async (status) => {
+    'permanently revokes every session on ACTIVE to %s',
+    async (status) => {
       const first = await login().expect(200);
       const second = await login().expect(200);
       await accountService.setAccountStatus(accountId, status);
-      const rows = await dataSource.query(
-        'SELECT revoked_at FROM account_sessions WHERE account_id = $1', [accountId]
-      ) as Array<{ revoked_at: Date | null }>;
+      const rows = (await dataSource.query('SELECT revoked_at FROM account_sessions WHERE account_id = $1', [
+        accountId
+      ])) as Array<{ revoked_at: Date | null }>;
       expect(rows).toHaveLength(2);
       expect(rows.every((row) => row.revoked_at !== null)).toBe(true);
       await accountService.setAccountStatus(accountId, status);
-      const repeated = await dataSource.query(
-        'SELECT revoked_at FROM account_sessions WHERE account_id = $1 ORDER BY id', [accountId]
-      ) as Array<{ revoked_at: Date | null }>;
-      expect(repeated.map((row) => row.revoked_at?.getTime()).sort())
-        .toEqual(rows.map((row) => row.revoked_at?.getTime()).sort());
-      await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: first.body.refreshToken }).expect(401);
-      await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: second.body.refreshToken }).expect(401);
+      const repeated = (await dataSource.query(
+        'SELECT revoked_at FROM account_sessions WHERE account_id = $1 ORDER BY id',
+        [accountId]
+      )) as Array<{ revoked_at: Date | null }>;
+      expect(repeated.map((row) => row.revoked_at?.getTime()).sort()).toEqual(
+        rows.map((row) => row.revoked_at?.getTime()).sort()
+      );
+      await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({ refreshToken: first.body.refreshToken })
+        .expect(401);
+      await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({ refreshToken: second.body.refreshToken })
+        .expect(401);
 
       await accountService.setAccountStatus(accountId, AccountStatus.ACTIVE);
-      await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: first.body.refreshToken }).expect(401);
+      await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({ refreshToken: first.body.refreshToken })
+        .expect(401);
       const fresh = await login().expect(200);
-      await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: fresh.body.refreshToken }).expect(200);
-      const afterReactivation = await dataSource.query(
-        'SELECT revoked_at FROM account_sessions WHERE account_id = $1 ORDER BY created_at, id', [accountId]
-      ) as Array<{ revoked_at: Date | null }>;
+      await request(app.getHttpServer())
+        .post('/auth/refresh')
+        .send({ refreshToken: fresh.body.refreshToken })
+        .expect(200);
+      const afterReactivation = (await dataSource.query(
+        'SELECT revoked_at FROM account_sessions WHERE account_id = $1 ORDER BY created_at, id',
+        [accountId]
+      )) as Array<{ revoked_at: Date | null }>;
       expect(afterReactivation.filter((row) => row.revoked_at !== null)).toHaveLength(2);
       expect(afterReactivation.filter((row) => row.revoked_at === null)).toHaveLength(1);
     }
@@ -274,12 +348,16 @@ describe('Local login and access JWT (PostgreSQL e2e)', () => {
     const otherLogin = await login('other@example.com').expect(200);
     await accountService.remove(accountId);
     await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: own.body.refreshToken }).expect(401);
-    const rows = await dataSource.query(
-      'SELECT account_id, revoked_at FROM account_sessions WHERE account_id = ANY($1::uuid[])', [[accountId, other.id]]
-    ) as Array<{ account_id: string; revoked_at: Date | null }>;
+    const rows = (await dataSource.query(
+      'SELECT account_id, revoked_at FROM account_sessions WHERE account_id = ANY($1::uuid[])',
+      [[accountId, other.id]]
+    )) as Array<{ account_id: string; revoked_at: Date | null }>;
     expect(rows.find((row) => row.account_id === accountId)?.revoked_at).not.toBeNull();
     expect(rows.find((row) => row.account_id === other.id)?.revoked_at).toBeNull();
-    await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: otherLogin.body.refreshToken }).expect(200);
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refreshToken: otherLogin.body.refreshToken })
+      .expect(200);
   });
 
   it('rolls back account status and deletion when session revocation fails', async () => {
@@ -289,14 +367,15 @@ describe('Local login and access JWT (PostgreSQL e2e)', () => {
     await dataSource.query(`CREATE TRIGGER fail_session_revoke BEFORE UPDATE OF revoked_at ON account_sessions
       FOR EACH ROW EXECUTE FUNCTION fail_session_revoke()`);
     try {
-      await expect(accountService.setAccountStatus(accountId, AccountStatus.DISABLED))
-        .rejects.toThrow('synthetic revocation failure');
+      await expect(accountService.setAccountStatus(accountId, AccountStatus.DISABLED)).rejects.toThrow(
+        'synthetic revocation failure'
+      );
       expect((await accountService.findById(accountId)).status).toBe(AccountStatus.ACTIVE);
       await expect(accountService.remove(accountId)).rejects.toThrow('synthetic revocation failure');
       expect((await accountService.findById(accountId)).deletedAt).toBeNull();
-      const rows = await dataSource.query(
-        'SELECT revoked_at FROM account_sessions WHERE account_id = $1', [accountId]
-      ) as Array<{ revoked_at: Date | null }>;
+      const rows = (await dataSource.query('SELECT revoked_at FROM account_sessions WHERE account_id = $1', [
+        accountId
+      ])) as Array<{ revoked_at: Date | null }>;
       expect(rows).toHaveLength(1);
       expect(rows[0]?.revoked_at).toBeNull();
     } finally {
@@ -308,12 +387,22 @@ describe('Local login and access JWT (PostgreSQL e2e)', () => {
   it('rejects invalid refresh tokens and unknown request fields', async () => {
     const access = await login().expect(200);
     const token = access.body.refreshToken as string;
-    for (const invalid of ['bad-token', access.body.accessToken, signer('wrong-secret-that-is-long-enough-for-jwt').sign({
-      sub: accountId, sid: randomUUID(), jti: randomUUID(), tokenType: 'refresh'
-    })]) {
+    for (const invalid of [
+      'bad-token',
+      access.body.accessToken,
+      signer('wrong-secret-that-is-long-enough-for-jwt').sign({
+        sub: accountId,
+        sid: randomUUID(),
+        jti: randomUUID(),
+        tokenType: 'refresh'
+      })
+    ]) {
       await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: invalid }).expect(401);
     }
-    await request(app.getHttpServer()).post('/auth/refresh').send({ refreshToken: token, unexpected: true }).expect(400);
+    await request(app.getHttpServer())
+      .post('/auth/refresh')
+      .send({ refreshToken: token, unexpected: true })
+      .expect(400);
     await request(app.getHttpServer()).post('/auth/logout').send({ refreshToken: 12 }).expect(400);
   });
 
@@ -324,24 +413,53 @@ describe('Local login and access JWT (PostgreSQL e2e)', () => {
     await request(app.getHttpServer()).get('/account/me').set('Authorization', `Bearer ${adminToken}`).expect(200);
     const other = await accountService.createAccount({ email: 'other@example.com', password });
     await accountService.setAccountStatus(other.id, AccountStatus.ACTIVE);
-    await request(app.getHttpServer()).get(`/account/${other.id}`).set('Authorization', `Bearer ${adminToken}`).expect(200);
-    await request(app.getHttpServer()).patch(`/account/${other.id}/disable`).set('Authorization', `Bearer ${adminToken}`).expect(200);
+    await request(app.getHttpServer())
+      .get(`/account/${other.id}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch(`/account/${other.id}/disable`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
     expect((await accountService.findById(other.id)).status).toBe(AccountStatus.DISABLED);
-    await request(app.getHttpServer()).get(`/account/${randomUUID()}`).set('Authorization', `Bearer ${adminToken}`).expect(404);
+    await request(app.getHttpServer())
+      .get(`/account/${randomUUID()}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(404);
 
-    await dataSource.query("DELETE FROM account_roles WHERE account_id = $1 AND role_id IN (SELECT id FROM roles WHERE code = 'ADMIN')", [accountId]);
+    await dataSource.query(
+      "DELETE FROM account_roles WHERE account_id = $1 AND role_id IN (SELECT id FROM roles WHERE code = 'ADMIN')",
+      [accountId]
+    );
     const sellerLogin = await login().expect(200);
     const sellerToken = sellerLogin.body.accessToken as string;
     const bearer = `Bearer ${sellerToken}`;
     await request(app.getHttpServer()).get(`/account/${other.id}`).set('Authorization', bearer).expect(403);
     await request(app.getHttpServer()).patch(`/account/${other.id}/disable`).set('Authorization', bearer).expect(403);
-    await request(app.getHttpServer()).patch('/account/me').set('Authorization', bearer).send({ status: 'ACTIVE' }).expect(400);
-    await request(app.getHttpServer()).patch('/account/me').set('Authorization', bearer).send({ email: 'updated@example.com' }).expect(200);
+    await request(app.getHttpServer())
+      .patch('/account/me')
+      .set('Authorization', bearer)
+      .send({ status: 'ACTIVE' })
+      .expect(400);
+    await request(app.getHttpServer())
+      .patch('/account/me')
+      .set('Authorization', bearer)
+      .send({ email: 'updated@example.com' })
+      .expect(200);
     expect((await accountService.findById(accountId)).email).toBe('updated@example.com');
-    await request(app.getHttpServer()).patch('/account/me').set('Authorization', bearer).send({ email: 'other@example.com' }).expect(409);
+    await request(app.getHttpServer())
+      .patch('/account/me')
+      .set('Authorization', bearer)
+      .send({ email: 'other@example.com' })
+      .expect(409);
     await request(app.getHttpServer()).get('/permission-probe').set('Authorization', bearer).expect(403);
-    const [permission] = await dataSource.query("INSERT INTO permissions (code) VALUES ('account:read') RETURNING id") as Array<{ id: string }>;
-    await dataSource.query("INSERT INTO role_permissions (role_id, permission_id) SELECT id, $1 FROM roles WHERE code = 'SELLER'", [permission?.id]);
+    const [permission] = (await dataSource.query(
+      "INSERT INTO permissions (code) VALUES ('account:read') RETURNING id"
+    )) as Array<{ id: string }>;
+    await dataSource.query(
+      "INSERT INTO role_permissions (role_id, permission_id) SELECT id, $1 FROM roles WHERE code = 'SELLER'",
+      [permission?.id]
+    );
     await request(app.getHttpServer()).get('/permission-probe').set('Authorization', bearer).expect(200);
   });
 });

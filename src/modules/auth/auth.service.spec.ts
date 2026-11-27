@@ -17,7 +17,8 @@ describe('AuthService', () => {
     const service = new AuthService(
       { verifyCredentials } as unknown as AccountService,
       new JwtService({ secret }),
-      new ConfigService({ app: { jwtAccessTtlSeconds: 900 } }), sessions
+      new ConfigService({ app: { jwtAccessTtlSeconds: 900 } }),
+      sessions
     );
     expect(await service.validateCredentials('User@Example.COM', 'password')).toBe(account);
     expect(verifyCredentials).toHaveBeenCalledExactlyOnceWith('User@Example.COM', 'password');
@@ -28,7 +29,8 @@ describe('AuthService', () => {
     const service = new AuthService(
       { verifyCredentials } as unknown as AccountService,
       new JwtService({ secret }),
-      new ConfigService({ app: { jwtAccessTtlSeconds: 900 } }), sessions
+      new ConfigService({ app: { jwtAccessTtlSeconds: 900 } }),
+      sessions
     );
     expect(await service.validateCredentials('unknown@example.com', 'wrong')).toBeNull();
     expect(verifyCredentials).toHaveBeenCalledOnce();
@@ -43,11 +45,14 @@ describe('AuthService', () => {
     const service = new AuthService(
       { verifyCredentials } as unknown as AccountService,
       jwt,
-      new ConfigService({ app: { jwtAccessTtlSeconds: 900 } }), sessions
+      new ConfigService({ app: { jwtAccessTtlSeconds: 900 } }),
+      sessions
     );
     const response = await service.issueAccessToken(account);
     const payload = await jwt.verifyAsync<Record<string, unknown>>(response.accessToken, {
-      algorithms: ['HS256'], issuer: 'fo-ecbe', audience: 'fo-ecbe-api'
+      algorithms: ['HS256'],
+      issuer: 'fo-ecbe',
+      audience: 'fo-ecbe-api'
     });
     expect(response).toMatchObject({ tokenType: 'Bearer', expiresIn: 900 });
     expect(Object.keys(payload).sort()).toEqual(['aud', 'exp', 'iat', 'iss', 'roleCodes', 'sub', 'tokenType']);

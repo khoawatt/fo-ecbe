@@ -17,7 +17,7 @@ const AppDataSource = new DataSource({
   entities: [`${import.meta.dirname}/entities/*.entity.js`],
   migrations: [`${import.meta.dirname}/migrations/*.js`],
   synchronize: false,
-  migrationsTransactionMode: 'all',
+  migrationsTransactionMode: 'all'
 });
 
 export default AppDataSource;

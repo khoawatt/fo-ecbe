@@ -29,10 +29,13 @@ export class CreateOrders1794055000000 implements MigrationInterface {
     await q.query('CREATE INDEX "ix_order_items_order_id" ON "order_items" ("order_id")');
     await q.query(`CREATE FUNCTION protect_order_item_snapshots() RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN RAISE EXCEPTION 'Order item snapshots are immutable' USING ERRCODE = '23514'; END $$`);
-    await q.query('CREATE TRIGGER trg_order_items_immutable BEFORE UPDATE ON order_items FOR EACH ROW EXECUTE FUNCTION protect_order_item_snapshots()');
+    await q.query(
+      'CREATE TRIGGER trg_order_items_immutable BEFORE UPDATE ON order_items FOR EACH ROW EXECUTE FUNCTION protect_order_item_snapshots()'
+    );
   }
   async down(q: QueryRunner): Promise<void> {
-    await q.query('DROP TABLE "order_items"'); await q.query('DROP FUNCTION protect_order_item_snapshots()');
+    await q.query('DROP TABLE "order_items"');
+    await q.query('DROP FUNCTION protect_order_item_snapshots()');
     await q.query('DROP TABLE "orders"');
   }
 }

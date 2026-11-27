@@ -26,8 +26,12 @@ describe('LocalStrategy', () => {
     const validateCredentials = vi.fn();
     const strategy = new LocalStrategy({ validateCredentials } as unknown as AuthService);
     for (const [email, password] of [
-      [undefined, 'password'], ['user@example.com', undefined], [42, 'password'],
-      ['user@example.com', { value: 'password' }], [' ', 'password'], ['user@example.com', '']
+      [undefined, 'password'],
+      ['user@example.com', undefined],
+      [42, 'password'],
+      ['user@example.com', { value: 'password' }],
+      [' ', 'password'],
+      ['user@example.com', '']
     ]) {
       await expect(strategy.validate(email, password)).rejects.toThrow(UnauthorizedException);
     }

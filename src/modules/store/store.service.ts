@@ -10,20 +10,26 @@ import type { StoreInput, StoreRecord } from './store.types.js';
 
 @Injectable()
 export class StoreService {
-  constructor(@Inject(STORE_REPOSITORY) private readonly stores: StoreRepositoryInterface, private readonly profiles: ProfileService,
-    private readonly accounts: AccountService) {}
+  constructor(
+    @Inject(STORE_REPOSITORY) private readonly stores: StoreRepositoryInterface,
+    private readonly profiles: ProfileService,
+    private readonly accounts: AccountService
+  ) {}
   private async approvedSeller(accountId: string) {
     const account = await this.accounts.findById(accountId).catch(() => null);
     if (!account || account.status !== AccountStatus.ACTIVE) throw new ForbiddenException('Active account required');
     const seller = await this.profiles.sellerForAccount(accountId).catch(() => null);
-    if (!seller || seller.verificationStatus !== SellerVerificationStatus.APPROVED) throw new ForbiddenException('Approved seller required');
+    if (!seller || seller.verificationStatus !== SellerVerificationStatus.APPROVED)
+      throw new ForbiddenException('Approved seller required');
     return seller;
   }
   async create(accountId: string, input: StoreInput): Promise<StoreRecord> {
     const seller = await this.approvedSeller(accountId);
-    try { return await this.stores.create(seller.id, input); }
-    catch (error) {
-      if ((error as { driverError?: { code?: string } }).driverError?.code === '23505') throw new ConflictException('Store slug exists');
+    try {
+      return await this.stores.create(seller.id, input);
+    } catch (error) {
+      if ((error as { driverError?: { code?: string } }).driverError?.code === '23505')
+        throw new ConflictException('Store slug exists');
       throw error;
     }
   }
@@ -34,15 +40,21 @@ export class StoreService {
     if (store.sellerProfileId !== seller.id) throw new ForbiddenException('Store ownership required');
     return store;
   }
-  async update(accountId: string, storeId: string, data: Partial<StoreInput> & { status?: StoreStatus }): Promise<StoreRecord> {
+  async update(
+    accountId: string,
+    storeId: string,
+    data: Partial<StoreInput> & { status?: StoreStatus }
+  ): Promise<StoreRecord> {
     await this.requireOwner(accountId, storeId);
     const safe: Partial<StoreInput> & { status?: StoreStatus } = {};
     if (data.name !== undefined) safe.name = data.name;
     if (data.slug !== undefined) safe.slug = data.slug;
     if (data.status !== undefined) safe.status = data.status;
-    try { return await this.stores.update(storeId, safe); }
-    catch (error) {
-      if ((error as { driverError?: { code?: string } }).driverError?.code === '23505') throw new ConflictException('Store slug exists');
+    try {
+      return await this.stores.update(storeId, safe);
+    } catch (error) {
+      if ((error as { driverError?: { code?: string } }).driverError?.code === '23505')
+        throw new ConflictException('Store slug exists');
       throw error;
     }
   }

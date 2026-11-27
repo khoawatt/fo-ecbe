@@ -78,7 +78,7 @@ The following diagram illustrates the **target architecture** described in this 
 
 [![FO-ECBE Repository Pattern — Account architecture diagram](https://drive.google.com/thumbnail?id=1UYxPqw8P7I8XEeFXRM2bYS8-RQV6SirF&sz=w1600)](https://drive.google.com/file/d/1UYxPqw8P7I8XEeFXRM2bYS8-RQV6SirF/view)
 
-*Click the diagram to open the full-size PNG stored in the [Diagrams folder on Google Drive](https://drive.google.com/drive/folders/1bQk1YxB6CCG6xrSveMWNYsOnt5cro-s5).*
+_Click the diagram to open the full-size PNG stored in the [Diagrams folder on Google Drive](https://drive.google.com/drive/folders/1bQk1YxB6CCG6xrSveMWNYsOnt5cro-s5)._
 
 The following components are retained:
 
@@ -137,23 +137,14 @@ This means TypeORM is treated as a persistence-layer implementation detail rathe
 Example target shape:
 
 ```ts
-export interface BaseRepositoryInterface<
-  TEntity,
-  TCreate,
-  TUpdate
-> {
+export interface BaseRepositoryInterface<TEntity, TCreate, TUpdate> {
   findById(id: string): Promise<TEntity | null>;
 
-  findAll(
-    query: PageQuery
-  ): Promise<PageResult<TEntity>>;
+  findAll(query: PageQuery): Promise<PageResult<TEntity>>;
 
   create(data: TCreate): Promise<TEntity>;
 
-  update(
-    id: string,
-    data: TUpdate
-  ): Promise<TEntity | null>;
+  update(id: string, data: TUpdate): Promise<TEntity | null>;
 
   softDelete(id: string): Promise<boolean>;
 
@@ -183,14 +174,8 @@ export abstract class BaseRepositoryAbstract<
   TEntity extends ObjectLiteral,
   TCreate,
   TUpdate
-> implements BaseRepositoryInterface<
-  TEntity,
-  TCreate,
-  TUpdate
-> {
-  protected constructor(
-    protected readonly repository: Repository<TEntity>
-  ) {}
+> implements BaseRepositoryInterface<TEntity, TCreate, TUpdate> {
+  protected constructor(protected readonly repository: Repository<TEntity>) {}
 
   // generic TypeORM CRUD implementation
 }
@@ -214,19 +199,14 @@ Each feature owns its repository contract.
 Example:
 
 ```ts
-export interface AccountRepositoryInterface
-  extends BaseRepositoryInterface<
-    AccountEntity,
-    CreateAccountData,
-    UpdateAccountData
-  > {
-  findByEmail(
-    email: string
-  ): Promise<AccountEntity | null>;
+export interface AccountRepositoryInterface extends BaseRepositoryInterface<
+  AccountEntity,
+  CreateAccountData,
+  UpdateAccountData
+> {
+  findByEmail(email: string): Promise<AccountEntity | null>;
 
-  existsByEmail(
-    email: string
-  ): Promise<boolean>;
+  existsByEmail(email: string): Promise<boolean>;
 }
 ```
 
@@ -241,11 +221,7 @@ Example target:
 ```ts
 @Injectable()
 export class AccountRepository
-  extends BaseRepositoryAbstract<
-    AccountEntity,
-    CreateAccountData,
-    UpdateAccountData
-  >
+  extends BaseRepositoryAbstract<AccountEntity, CreateAccountData, UpdateAccountData>
   implements AccountRepositoryInterface
 {
   constructor(
@@ -292,23 +268,14 @@ export interface ReadService<TEntity> {
   findAll(query: PageQuery): Promise<PageResult<TEntity>>;
 }
 
-export interface WriteService<
-  TEntity,
-  TCreate,
-  TUpdate
-> {
+export interface WriteService<TEntity, TCreate, TUpdate> {
   create(data: TCreate): Promise<TEntity>;
   update(id: string, data: TUpdate): Promise<TEntity>;
   remove(id: string): Promise<void>;
 }
 
-export interface BaseServiceInterface<
-  TEntity,
-  TCreate,
-  TUpdate
-> extends
-  ReadService<TEntity>,
-  WriteService<TEntity, TCreate, TUpdate> {}
+export interface BaseServiceInterface<TEntity, TCreate, TUpdate>
+  extends ReadService<TEntity>, WriteService<TEntity, TCreate, TUpdate> {}
 ```
 
 ---
@@ -320,19 +287,12 @@ export interface BaseServiceInterface<
 Example target:
 
 ```ts
-export abstract class BaseServiceAbstract<
-  TEntity,
-  TCreate,
-  TUpdate
-> implements BaseServiceInterface<
+export abstract class BaseServiceAbstract<TEntity, TCreate, TUpdate> implements BaseServiceInterface<
   TEntity,
   TCreate,
   TUpdate
 > {
-  protected constructor(
-    protected readonly repository:
-      BaseRepositoryInterface<TEntity, TCreate, TUpdate>
-  ) {}
+  protected constructor(protected readonly repository: BaseRepositoryInterface<TEntity, TCreate, TUpdate>) {}
 
   // generic service behavior
 }
@@ -384,8 +344,7 @@ Repository injection must use explicit runtime tokens.
 Use:
 
 ```ts
-export const ACCOUNT_REPOSITORY =
-  Symbol('ACCOUNT_REPOSITORY');
+export const ACCOUNT_REPOSITORY = Symbol('ACCOUNT_REPOSITORY');
 ```
 
 Provider:
@@ -412,7 +371,7 @@ constructor(
 Do not use magic-string tokens such as:
 
 ```ts
-'AccountRepositoryInterface'
+'AccountRepositoryInterface';
 ```
 
 Reason:

@@ -40,18 +40,9 @@ try {
   await client.query('DROP TABLE IF EXISTS fo014_cli_smoke');
   await client.query('DROP TABLE IF EXISTS fo014_cli_smoke_migrations');
 
-  runCli([
-    'migration:generate',
-    migrationPrefix,
-    '-d',
-    dataSourcePath,
-    '--outputJs',
-    '--esm',
-  ]);
+  runCli(['migration:generate', migrationPrefix, '-d', dataSourcePath, '--outputJs', '--esm']);
 
-  const generatedFiles = (await readdir(temporaryDirectory)).filter((file) =>
-    file.endsWith('.js'),
-  );
+  const generatedFiles = (await readdir(temporaryDirectory)).filter((file) => file.endsWith('.js'));
   if (generatedFiles.length !== 1) {
     throw new Error(`Expected one generated migration, found ${generatedFiles.length}`);
   }

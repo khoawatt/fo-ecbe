@@ -11,8 +11,14 @@ import { CatalogRepository } from './catalog.repository.js';
 import { CatalogService } from './catalog.service.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ProductEntity, ProductVariantEntity]), StoreModule, AuthModule, AuthorizationModule],
+  imports: [
+    TypeOrmModule.forFeature([ProductEntity, ProductVariantEntity]),
+    StoreModule,
+    AuthModule,
+    AuthorizationModule
+  ],
   providers: [CatalogRepository, { provide: CATALOG_REPOSITORY, useExisting: CatalogRepository }, CatalogService],
-  controllers: [CatalogController], exports: [CatalogService]
+  controllers: [CatalogController],
+  exports: [CatalogService]
 })
 export class CatalogModule {}

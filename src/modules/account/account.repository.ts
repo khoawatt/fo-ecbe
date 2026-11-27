@@ -71,7 +71,9 @@ export class AccountRepository
 
   override async update(id: string, data: UpdateAccountData): Promise<AccountRecord | null> {
     return this.accountRepository.manager.transaction(async (manager) => {
-      const entity = await manager.getRepository(AccountEntity).findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
+      const entity = await manager
+        .getRepository(AccountEntity)
+        .findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
       if (!entity) return null;
 
       const safeUpdate: UpdateAccountData = {};
@@ -92,7 +94,9 @@ export class AccountRepository
 
   override async softDelete(id: string): Promise<boolean> {
     return this.accountRepository.manager.transaction(async (manager) => {
-      const entity = await manager.getRepository(AccountEntity).findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
+      const entity = await manager
+        .getRepository(AccountEntity)
+        .findOne({ where: { id }, lock: { mode: 'pessimistic_write' } });
       if (!entity) return false;
       const result = await manager.softDelete(AccountEntity, { id });
       await this.revokeAllActiveSessionsByAccountId(manager, id);
@@ -101,7 +105,9 @@ export class AccountRepository
   }
 
   private async revokeAllActiveSessionsByAccountId(manager: EntityManager, accountId: string): Promise<void> {
-    await manager.createQueryBuilder().update(AccountSessionEntity)
+    await manager
+      .createQueryBuilder()
+      .update(AccountSessionEntity)
       .set({ revokedAt: () => 'now()' })
       .where('account_id = :accountId AND revoked_at IS NULL', { accountId })
       .execute();

@@ -9,8 +9,13 @@ import { RolesGuard } from './roles.guard.js';
 
 @Module({
   imports: [TypeOrmModule.forFeature([PermissionEntity])],
-  providers: [RolesGuard, PermissionGuard, PermissionService, PermissionRepository,
-    { provide: PERMISSION_REPOSITORY, useExisting: PermissionRepository }],
+  providers: [
+    RolesGuard,
+    PermissionGuard,
+    PermissionService,
+    PermissionRepository,
+    { provide: PERMISSION_REPOSITORY, useExisting: PermissionRepository }
+  ],
   exports: [RolesGuard, PermissionGuard, PermissionService]
 })
 export class AuthorizationModule {}

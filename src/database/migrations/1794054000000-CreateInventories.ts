@@ -11,7 +11,9 @@ export class CreateInventories1794054000000 implements MigrationInterface {
       CONSTRAINT "fk_inventories_product_variant_id" FOREIGN KEY ("product_variant_id") REFERENCES "product_variants"("id") ON DELETE RESTRICT,
       CONSTRAINT "ck_inventories_quantity" CHECK ("quantity" >= 0)
     )`);
-    await q.query('CREATE UNIQUE INDEX "uq_inventories_store_variant" ON "inventories" ("store_id", "product_variant_id")');
+    await q.query(
+      'CREATE UNIQUE INDEX "uq_inventories_store_variant" ON "inventories" ("store_id", "product_variant_id")'
+    );
     await q.query(`CREATE FUNCTION check_inventory_variant_store() RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN
         IF NOT EXISTS (SELECT 1 FROM product_variants v JOIN products p ON p.id = v.product_id
@@ -20,7 +22,9 @@ export class CreateInventories1794054000000 implements MigrationInterface {
         END IF;
         RETURN NEW;
       END $$`);
-    await q.query('CREATE TRIGGER trg_inventories_variant_store BEFORE INSERT OR UPDATE OF store_id, product_variant_id ON inventories FOR EACH ROW EXECUTE FUNCTION check_inventory_variant_store()');
+    await q.query(
+      'CREATE TRIGGER trg_inventories_variant_store BEFORE INSERT OR UPDATE OF store_id, product_variant_id ON inventories FOR EACH ROW EXECUTE FUNCTION check_inventory_variant_store()'
+    );
     await q.query(`CREATE FUNCTION protect_stocked_product_store() RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN
         IF NEW.store_id <> OLD.store_id AND EXISTS (
@@ -31,7 +35,9 @@ export class CreateInventories1794054000000 implements MigrationInterface {
         END IF;
         RETURN NEW;
       END $$`);
-    await q.query('CREATE TRIGGER trg_products_stocked_store BEFORE UPDATE OF store_id ON products FOR EACH ROW EXECUTE FUNCTION protect_stocked_product_store()');
+    await q.query(
+      'CREATE TRIGGER trg_products_stocked_store BEFORE UPDATE OF store_id ON products FOR EACH ROW EXECUTE FUNCTION protect_stocked_product_store()'
+    );
   }
   async down(q: QueryRunner): Promise<void> {
     await q.query('DROP TRIGGER IF EXISTS trg_products_stocked_store ON products');

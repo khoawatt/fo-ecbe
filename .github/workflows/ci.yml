@@ -39,6 +39,7 @@ jobs:
           node-version: 24.21.0
           cache: npm
       - run: npm ci
+      - run: npm run format:check
       - run: npm ls
       - run: npm run lint
       - run: npm run typecheck

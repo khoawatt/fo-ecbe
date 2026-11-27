@@ -14,7 +14,11 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @UseGuards(LocalAuthGuard)
-  login(@Req() request: Request & { user: AuthenticatedAccount }, @Body() body: LoginRequestDto, @Headers('user-agent') userAgent?: string): Promise<TokenPairResponse> {
+  login(
+    @Req() request: Request & { user: AuthenticatedAccount },
+    @Body() body: LoginRequestDto,
+    @Headers('user-agent') userAgent?: string
+  ): Promise<TokenPairResponse> {
     void body;
     return this.auth.issueTokenPair(request.user, userAgent);
   }

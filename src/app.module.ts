@@ -12,7 +12,18 @@ import { InventoryModule } from './modules/inventory/inventory.module.js';
 import { OrderModule } from './modules/order/order.module.js';
 
 @Module({
-  imports: [AppConfigModule, DatabaseModule, AccountModule, AuthModule, AccountHttpModule, ProfileModule, StoreModule, CatalogModule, InventoryModule, OrderModule],
+  imports: [
+    AppConfigModule,
+    DatabaseModule,
+    AccountModule,
+    AuthModule,
+    AccountHttpModule,
+    ProfileModule,
+    StoreModule,
+    CatalogModule,
+    InventoryModule,
+    OrderModule
+  ],
   controllers: [AppController]
 })
 export class AppModule {}

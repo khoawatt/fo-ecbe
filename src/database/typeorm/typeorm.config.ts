@@ -16,9 +16,7 @@ import { RolePermissionEntity } from '../entities/role-permission.entity.js';
 import { RoleEntity } from '../entities/role.entity.js';
 import { SnakeNamingStrategy } from './snake-naming.strategy.js';
 
-export function createTypeOrmOptions(
-  config: ConfigService,
-): TypeOrmModuleOptions {
+export function createTypeOrmOptions(config: ConfigService): TypeOrmModuleOptions {
   return {
     type: 'postgres',
     host: config.getOrThrow<string>('database.host'),
@@ -41,9 +39,9 @@ export function createTypeOrmOptions(
       OrderItemEntity,
       PermissionEntity,
       RoleEntity,
-      RolePermissionEntity,
+      RolePermissionEntity
     ],
     autoLoadEntities: true,
-    synchronize: false,
+    synchronize: false
   };
 }

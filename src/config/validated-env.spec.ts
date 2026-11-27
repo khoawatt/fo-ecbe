@@ -63,7 +63,9 @@ describe('validateEnvironment', () => {
       expect(() => validateEnvironment({ ...validEnv, JWT_REFRESH_SECRET: secret })).toThrow();
     }
     for (const ttl of ['59', '2592001', '1.5']) {
-      expect(() => validateEnvironment({ ...validEnv, JWT_REFRESH_TTL_SECONDS: ttl })).toThrow(/JWT_REFRESH_TTL_SECONDS/);
+      expect(() => validateEnvironment({ ...validEnv, JWT_REFRESH_TTL_SECONDS: ttl })).toThrow(
+        /JWT_REFRESH_TTL_SECONDS/
+      );
     }
     expect(() => validateEnvironment({ ...validEnv, JWT_REFRESH_AUDIENCE: 'fo-ecbe-api' })).toThrow();
   });
@@ -75,7 +77,8 @@ describe('validateEnvironment', () => {
     expect(() => validateEnvironment({ ...env, JWT_REFRESH_SECRET: undefined })).toThrow(/JWT_REFRESH_SECRET/);
     expect(() => validateEnvironment({ ...env, JWT_ACCESS_SECRET: 'short' })).toThrow(/JWT_ACCESS_SECRET/);
     expect(() => validateEnvironment({ ...env, JWT_REFRESH_SECRET: 'short' })).toThrow(/JWT_REFRESH_SECRET/);
-    expect(() => validateEnvironment({ ...env, JWT_REFRESH_SECRET: env.JWT_ACCESS_SECRET }))
-      .toThrow('JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must differ');
+    expect(() => validateEnvironment({ ...env, JWT_REFRESH_SECRET: env.JWT_ACCESS_SECRET })).toThrow(
+      'JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must differ'
+    );
   });
 });
