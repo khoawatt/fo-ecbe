@@ -8,5 +8,8 @@ export interface CatalogRepositoryInterface {
   updateProduct(id: string, data: { name?: string; status?: ProductStatus }): Promise<ProductRecord>;
   createVariant(productId: string, sku: string, priceCents: number): Promise<VariantRecord>;
   findVariant(id: string): Promise<VariantRecord | null>;
-  updateVariant(id: string, data: { sku?: string; priceCents?: number; status?: VariantStatus }): Promise<VariantRecord>;
+  updateVariant(
+    id: string,
+    data: { sku?: string; priceCents?: number; status?: VariantStatus }
+  ): Promise<VariantRecord>;
 }

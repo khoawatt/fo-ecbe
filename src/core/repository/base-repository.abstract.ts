@@ -4,9 +4,11 @@ import type { PageQuery } from '../../common/contracts/page-query.js';
 import type { PageResult } from '../../common/contracts/page-result.js';
 import type { BaseRepositoryInterface } from './base-repository.interface.js';
 
-export abstract class BaseRepositoryAbstract<TEntity extends ObjectLiteral, TCreate, TUpdate>
-  implements BaseRepositoryInterface<TEntity, TCreate, TUpdate>
-{
+export abstract class BaseRepositoryAbstract<
+  TEntity extends ObjectLiteral,
+  TCreate,
+  TUpdate
+> implements BaseRepositoryInterface<TEntity, TCreate, TUpdate> {
   protected constructor(protected readonly repository: Repository<TEntity>) {}
 
   async findById(id: string): Promise<TEntity | null> {

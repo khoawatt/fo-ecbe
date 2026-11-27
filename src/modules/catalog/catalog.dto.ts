@@ -1,7 +1,9 @@
 import { IsEnum, IsInt, IsNotEmpty, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { ProductStatus } from '../../database/entities/product.entity.js';
 import { VariantStatus } from '../../database/entities/product-variant.entity.js';
-export class CreateProductDto { @IsString() @IsNotEmpty() @MaxLength(200) name!: string; }
+export class CreateProductDto {
+  @IsString() @IsNotEmpty() @MaxLength(200) name!: string;
+}
 export class UpdateProductDto {
   @IsOptional() @IsString() @IsNotEmpty() @MaxLength(200) name?: string;
   @IsOptional() @IsEnum(ProductStatus) status?: ProductStatus;

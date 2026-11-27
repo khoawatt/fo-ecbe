@@ -7,7 +7,8 @@ import { RolesGuard } from './roles.guard.js';
 
 function context(roleCodes?: string[]): ExecutionContext {
   return {
-    getHandler: () => function handler() {}, getClass: () => class Controller {},
+    getHandler: () => function handler() {},
+    getClass: () => class Controller {},
     switchToHttp: () => ({ getRequest: () => ({ user: roleCodes ? { id: 'account', roleCodes } : undefined }) })
   } as unknown as ExecutionContext;
 }
@@ -22,7 +23,9 @@ describe('authorization guards', () => {
   });
 
   it('evaluates every required permission through the service only after authentication', async () => {
-    const reflector = { getAllAndOverride: vi.fn().mockReturnValue(['account:read', 'account:update']) } as unknown as Reflector;
+    const reflector = {
+      getAllAndOverride: vi.fn().mockReturnValue(['account:read', 'account:update'])
+    } as unknown as Reflector;
     const hasAll = vi.fn().mockResolvedValue(true);
     const guard = new PermissionGuard(reflector, { hasAll } as unknown as PermissionService);
     expect(await guard.canActivate(context())).toBe(false);

@@ -14,20 +14,38 @@ function setup() {
     findById: vi.fn().mockResolvedValue(record),
     findByEmail: vi.fn().mockResolvedValue(record),
     existsByEmail: vi.fn().mockResolvedValue(true),
-    findCredentialsByEmail: vi.fn().mockResolvedValue({ id: 'id', email: record.email, passwordHash: 'stored', status: AccountStatus.ACTIVE }),
+    findCredentialsByEmail: vi
+      .fn()
+      .mockResolvedValue({ id: 'id', email: record.email, passwordHash: 'stored', status: AccountStatus.ACTIVE }),
     findRoleCodesByAccountId: vi.fn().mockResolvedValue(['ADMIN', 'USER']),
     updatePasswordHash: vi.fn().mockResolvedValue(true)
   };
   const passwords = { hash: vi.fn().mockResolvedValue('hashed'), verify: vi.fn().mockResolvedValue(true) };
-  return { service: new AccountService(repo as unknown as AccountRepositoryInterface, passwords as unknown as PasswordHashingService), repo, passwords };
+  return {
+    service: new AccountService(
+      repo as unknown as AccountRepositoryInterface,
+      passwords as unknown as PasswordHashingService
+    ),
+    repo,
+    passwords
+  };
 }
 
 describe('AccountService', () => {
   it('normalizes and hashes creation, and blocks inherited create', async () => {
     const { service, repo } = setup();
-    expect(await service.createAccount({ email: ' User@Example.COM ', password: 'secret', passwordHash: 'injected', emailVerified: true } as never)).toEqual(record);
+    expect(
+      await service.createAccount({
+        email: ' User@Example.COM ',
+        password: 'secret',
+        passwordHash: 'injected',
+        emailVerified: true
+      } as never)
+    ).toEqual(record);
     expect(repo.create).toHaveBeenCalledWith({ email: 'user@example.com', passwordHash: 'hashed' });
-    expect(() => (service.create as (input: unknown) => unknown)({ passwordHash: 'injected' })).toThrow(ForbiddenException);
+    expect(() => (service.create as (input: unknown) => unknown)({ passwordHash: 'injected' })).toThrow(
+      ForbiddenException
+    );
     expect(repo.create).toHaveBeenCalledTimes(1);
   });
 
@@ -72,11 +90,20 @@ describe('AccountService', () => {
 
   it('returns only ACTIVE safe principal with canonical roles', async () => {
     const { service, repo, passwords } = setup();
-    expect(await service.verifyCredentials(' USER@Example.COM ', 'secret')).toEqual({ id: 'id', email: record.email, roleCodes: ['ADMIN', 'USER'] });
+    expect(await service.verifyCredentials(' USER@Example.COM ', 'secret')).toEqual({
+      id: 'id',
+      email: record.email,
+      roleCodes: ['ADMIN', 'USER']
+    });
     expect(repo.findCredentialsByEmail).toHaveBeenCalledWith(record.email);
     passwords.verify.mockResolvedValue(false);
     expect(await service.verifyCredentials(record.email, 'bad')).toBeNull();
-    repo.findCredentialsByEmail.mockResolvedValue({ id: 'id', email: record.email, passwordHash: 'stored', status: AccountStatus.DISABLED });
+    repo.findCredentialsByEmail.mockResolvedValue({
+      id: 'id',
+      email: record.email,
+      passwordHash: 'stored',
+      status: AccountStatus.DISABLED
+    });
     expect(await service.verifyCredentials(record.email, 'secret')).toBeNull();
   });
 });

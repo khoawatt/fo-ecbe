@@ -27,7 +27,14 @@ import { AccountService } from '../../src/modules/account/account.service.js';
 import type { AccountRepositoryInterface } from '../../src/modules/account/contracts/account-repository.interface.js';
 import { AccountStatus } from '../../src/modules/account/types/account-status.js';
 
-const entities = [AccountEntity, AccountRoleEntity, AccountSessionEntity, PermissionEntity, RoleEntity, RolePermissionEntity];
+const entities = [
+  AccountEntity,
+  AccountRoleEntity,
+  AccountSessionEntity,
+  PermissionEntity,
+  RoleEntity,
+  RolePermissionEntity
+];
 
 function passwordHashOf(value: unknown): unknown {
   return (value as Record<string, unknown>).passwordHash;
@@ -135,18 +142,31 @@ describe('AccountRepository (PostgreSQL)', () => {
     expect(await service.existsByEmail(' USER@EXAMPLE.COM ')).toBe(true);
     expect((await service.findByEmail(' USER@EXAMPLE.COM '))?.id).toBe(account.id);
     let duplicate: unknown;
-    try { await service.createAccount({ email: 'USER@EXAMPLE.COM', password: 'synthetic-other-password' }); }
-    catch (error) { duplicate = error; }
+    try {
+      await service.createAccount({ email: 'USER@EXAMPLE.COM', password: 'synthetic-other-password' });
+    } catch (error) {
+      duplicate = error;
+    }
     expect(sqlState(duplicate)).toBe('23505');
     const updated = await service.updateAccount(account.id, { email: ' Updated@Example.COM ', phone: '+15550000004' });
     expect(updated.email).toBe('updated@example.com');
     expect(passwordHashOf(updated)).toBeUndefined();
     await service.setAccountStatus(account.id, AccountStatus.ACTIVE);
-    const [admin] = (await dataSource.query("INSERT INTO roles (code, name) VALUES ('ADMIN', 'Administrator') RETURNING id")) as Array<{ id: string }>;
-    const [user] = (await dataSource.query("INSERT INTO roles (code, name) VALUES ('USER', 'User') RETURNING id")) as Array<{ id: string }>;
-    await dataSource.query('INSERT INTO account_roles (account_id, role_id) VALUES ($1, $2), ($1, $3)', [account.id, user?.id, admin?.id]);
+    const [admin] = (await dataSource.query(
+      "INSERT INTO roles (code, name) VALUES ('ADMIN', 'Administrator') RETURNING id"
+    )) as Array<{ id: string }>;
+    const [user] = (await dataSource.query(
+      "INSERT INTO roles (code, name) VALUES ('USER', 'User') RETURNING id"
+    )) as Array<{ id: string }>;
+    await dataSource.query('INSERT INTO account_roles (account_id, role_id) VALUES ($1, $2), ($1, $3)', [
+      account.id,
+      user?.id,
+      admin?.id
+    ]);
     expect(await service.verifyCredentials(' UPDATED@EXAMPLE.COM ', 'synthetic-old-password')).toEqual({
-      id: account.id, email: 'updated@example.com', roleCodes: ['ADMIN', 'USER']
+      id: account.id,
+      email: 'updated@example.com',
+      roleCodes: ['ADMIN', 'USER']
     });
     await expect(service.changePassword(account.id, 'wrong', 'synthetic-new-password')).rejects.toThrow();
     const changed = await service.changePassword(account.id, 'synthetic-old-password', 'synthetic-new-password');

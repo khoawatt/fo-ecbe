@@ -8,18 +8,32 @@ import { AccountSessionService } from './account-session.service.js';
 
 describe('AccountSessionService token boundary', () => {
   const secret = 'synthetic-refresh-signing-secret-32-bytes-minimum';
-  const config = new ConfigService({ app: {
-    jwtRefreshSecret: secret, jwtRefreshTtlSeconds: 604800,
-    jwtRefreshIssuer: 'fo-ecbe', jwtRefreshAudience: 'fo-ecbe-refresh'
-  } });
-  const jwt = new JwtService({ secret, signOptions: {
-    algorithm: 'HS256', expiresIn: 604800, issuer: 'fo-ecbe', audience: 'fo-ecbe-refresh'
-  } });
+  const config = new ConfigService({
+    app: {
+      jwtRefreshSecret: secret,
+      jwtRefreshTtlSeconds: 604800,
+      jwtRefreshIssuer: 'fo-ecbe',
+      jwtRefreshAudience: 'fo-ecbe-refresh'
+    }
+  });
+  const jwt = new JwtService({
+    secret,
+    signOptions: {
+      algorithm: 'HS256',
+      expiresIn: 604800,
+      issuer: 'fo-ecbe',
+      audience: 'fo-ecbe-refresh'
+    }
+  });
   const accountId = randomUUID();
 
   it('persists only a SHA-256 fingerprint and issues a session-bound unique-jti token', async () => {
     const createSession = vi.fn().mockResolvedValue(true);
-    const service = new AccountSessionService({ createSession } as unknown as AccountSessionRepositoryInterface, jwt, config);
+    const service = new AccountSessionService(
+      { createSession } as unknown as AccountSessionRepositoryInterface,
+      jwt,
+      config
+    );
     const first = await service.create(accountId, { deviceName: 'test' });
     const second = await service.create(accountId, {});
     const firstClaims = await service.verify(first);
@@ -27,14 +41,23 @@ describe('AccountSessionService token boundary', () => {
     expect(firstClaims).toMatchObject({ sub: accountId, tokenType: 'refresh' });
     expect(firstClaims.sid).not.toBe(secondClaims.sid);
     expect(firstClaims.jti).not.toBe(secondClaims.jti);
-    expect(createSession).toHaveBeenCalledWith(accountId, firstClaims.sid,
-      createHash('sha256').update(first).digest('hex'), expect.any(Date), { deviceName: 'test' });
+    expect(createSession).toHaveBeenCalledWith(
+      accountId,
+      firstClaims.sid,
+      createHash('sha256').update(first).digest('hex'),
+      expect.any(Date),
+      { deviceName: 'test' }
+    );
     expect(JSON.stringify(createSession.mock.calls)).not.toContain(first);
   });
 
   it('does not issue a refresh token when the account is no longer active at session creation', async () => {
     const createSession = vi.fn().mockResolvedValue(false);
-    const service = new AccountSessionService({ createSession } as unknown as AccountSessionRepositoryInterface, jwt, config);
+    const service = new AccountSessionService(
+      { createSession } as unknown as AccountSessionRepositoryInterface,
+      jwt,
+      config
+    );
     await expect(service.create(accountId, {})).rejects.toThrow(UnauthorizedException);
   });
 
@@ -55,7 +78,11 @@ describe('AccountSessionService token boundary', () => {
   it('denies a failed compare-and-swap rotation and revocation', async () => {
     const rotateIfCurrent = vi.fn().mockResolvedValue(false);
     const revokeIfCurrent = vi.fn().mockResolvedValue(false);
-    const service = new AccountSessionService({ rotateIfCurrent, revokeIfCurrent } as unknown as AccountSessionRepositoryInterface, jwt, config);
+    const service = new AccountSessionService(
+      { rotateIfCurrent, revokeIfCurrent } as unknown as AccountSessionRepositoryInterface,
+      jwt,
+      config
+    );
     const token = jwt.sign({ sub: accountId, sid: randomUUID(), jti: randomUUID(), tokenType: 'refresh' });
     const claims = await service.verify(token);
     await expect(service.rotate(token, claims)).rejects.toThrow(UnauthorizedException);

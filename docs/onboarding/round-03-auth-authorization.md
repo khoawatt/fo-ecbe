@@ -53,16 +53,16 @@ Question 5 was completed as a project-level PO/architecture decision rather than
 
 The target policy follows **least privilege**:
 
-| Endpoint | Current protection | Target protection | Failure scenario | Severity |
-|---|---|---|---|---|
-| `GET /account` | None. `@ApiBearerAuth` is documentation only; previous `@UserAuth` is commented out. | `ADMIN` only | Anonymous caller can enumerate account records. | **P1** |
-| `POST /account` | None | `ADMIN` only | Anonymous caller can provision an account through the employee-management endpoint. | **P0** |
-| `GET /account/detail/:id` | `JwtAccessTokenGuard` only | `ADMIN` only | Any authenticated account can read another account by arbitrary ID. | **P1** |
-| `PUT /account/detail/:id` | `JwtAccessTokenGuard` only | `ADMIN` only | Any authenticated account can modify another account by arbitrary ID. | **P0** |
-| `DELETE /account/detail/:id` | `JwtAccessTokenGuard` only | `ADMIN` only | Any authenticated account can permanently delete another account by arbitrary ID. | **P0** |
-| `GET /account/me` | `JwtAccessTokenGuard` | Authenticated user | Correct ownership boundary because ID comes from `req.user.id`. | Keep |
-| `PUT /account/me` | `JwtAccessTokenGuard` | Authenticated user | Correct ownership boundary because update target comes from `req.user.id`. | Keep |
-| `PUT /account/change-password` | `JwtAccessTokenGuard` | Authenticated user | Correct ownership boundary because account ID comes from `req.user.id` and current password is verified. | Keep |
+| Endpoint                       | Current protection                                                                   | Target protection  | Failure scenario                                                                                         | Severity |
+| ------------------------------ | ------------------------------------------------------------------------------------ | ------------------ | -------------------------------------------------------------------------------------------------------- | -------- |
+| `GET /account`                 | None. `@ApiBearerAuth` is documentation only; previous `@UserAuth` is commented out. | `ADMIN` only       | Anonymous caller can enumerate account records.                                                          | **P1**   |
+| `POST /account`                | None                                                                                 | `ADMIN` only       | Anonymous caller can provision an account through the employee-management endpoint.                      | **P0**   |
+| `GET /account/detail/:id`      | `JwtAccessTokenGuard` only                                                           | `ADMIN` only       | Any authenticated account can read another account by arbitrary ID.                                      | **P1**   |
+| `PUT /account/detail/:id`      | `JwtAccessTokenGuard` only                                                           | `ADMIN` only       | Any authenticated account can modify another account by arbitrary ID.                                    | **P0**   |
+| `DELETE /account/detail/:id`   | `JwtAccessTokenGuard` only                                                           | `ADMIN` only       | Any authenticated account can permanently delete another account by arbitrary ID.                        | **P0**   |
+| `GET /account/me`              | `JwtAccessTokenGuard`                                                                | Authenticated user | Correct ownership boundary because ID comes from `req.user.id`.                                          | Keep     |
+| `PUT /account/me`              | `JwtAccessTokenGuard`                                                                | Authenticated user | Correct ownership boundary because update target comes from `req.user.id`.                               | Keep     |
+| `PUT /account/change-password` | `JwtAccessTokenGuard`                                                                | Authenticated user | Correct ownership boundary because account ID comes from `req.user.id` and current password is verified. | Keep     |
 
 ### PO rule
 
@@ -89,7 +89,7 @@ Do not authorize administrative account-management routes with `EMPLOYEE` merely
 The code enum defines:
 
 ```ts
-ROLE.EMPLOYEE = 'EMPLOYEE'
+ROLE.EMPLOYEE = 'EMPLOYEE';
 ```
 
 while the Account entity and migration default the database role to:

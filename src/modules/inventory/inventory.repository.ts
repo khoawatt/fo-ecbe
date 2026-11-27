@@ -17,12 +17,19 @@ export class InventoryRepository implements InventoryRepositoryInterface {
     return row ? this.record(row) : null;
   }
   async create(storeId: string, variantId: string, quantity: number): Promise<InventoryRecord> {
-    const row = await this.inventories.save(this.inventories.create({ storeId, productVariantId: variantId, quantity }));
+    const row = await this.inventories.save(
+      this.inventories.create({ storeId, productVariantId: variantId, quantity })
+    );
     return this.record(row);
   }
   async adjust(storeId: string, variantId: string, delta: number): Promise<InventoryRecord | null> {
-    const result = await this.inventories.createQueryBuilder().update(InventoryEntity)
-      .set({ quantity: () => 'CAST(CAST(quantity AS bigint) + CAST(:delta AS bigint) AS integer)', updatedAt: () => 'now()' })
+    const result = await this.inventories
+      .createQueryBuilder()
+      .update(InventoryEntity)
+      .set({
+        quantity: () => 'CAST(CAST(quantity AS bigint) + CAST(:delta AS bigint) AS integer)',
+        updatedAt: () => 'now()'
+      })
       .where('store_id = :storeId AND product_variant_id = :variantId', { storeId, variantId })
       .andWhere('CAST(quantity AS bigint) + CAST(:delta AS bigint) BETWEEN 0 AND 2147483647')
       .setParameter('delta', delta)

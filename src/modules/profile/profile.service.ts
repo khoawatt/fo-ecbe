@@ -8,8 +8,10 @@ import type { CustomerProfileInput, CustomerProfileRecord, SellerProfileRecord }
 
 @Injectable()
 export class ProfileService {
-  constructor(@Inject(PROFILE_REPOSITORY) private readonly profiles: ProfileRepositoryInterface,
-    private readonly accounts: AccountService) {}
+  constructor(
+    @Inject(PROFILE_REPOSITORY) private readonly profiles: ProfileRepositoryInterface,
+    private readonly accounts: AccountService
+  ) {}
 
   private async requireActive(accountId: string): Promise<void> {
     const account = await this.accounts.findById(accountId).catch(() => null);
@@ -24,9 +26,11 @@ export class ProfileService {
 
   async createCustomer(accountId: string, input: CustomerProfileInput): Promise<CustomerProfileRecord> {
     await this.requireActive(accountId);
-    try { return await this.profiles.createCustomer(accountId, input); }
-    catch (error) {
-      if ((error as { driverError?: { code?: string } }).driverError?.code === '23505') throw new ConflictException('Customer profile exists');
+    try {
+      return await this.profiles.createCustomer(accountId, input);
+    } catch (error) {
+      if ((error as { driverError?: { code?: string } }).driverError?.code === '23505')
+        throw new ConflictException('Customer profile exists');
       throw error;
     }
   }
@@ -52,14 +56,17 @@ export class ProfileService {
     await this.requireActive(accountId);
     const existing = await this.profiles.sellerForAccount(accountId);
     if (existing) {
-      if (existing.verificationStatus !== SellerVerificationStatus.REJECTED) throw new ConflictException('Seller application already exists');
+      if (existing.verificationStatus !== SellerVerificationStatus.REJECTED)
+        throw new ConflictException('Seller application already exists');
       const reapplied = await this.profiles.reapplySeller(accountId, displayName);
       if (!reapplied) throw new ConflictException('Seller application state changed');
       return reapplied;
     }
-    try { return await this.profiles.createSeller(accountId, displayName); }
-    catch (error) {
-      if ((error as { driverError?: { code?: string } }).driverError?.code === '23505') throw new ConflictException('Seller application already exists');
+    try {
+      return await this.profiles.createSeller(accountId, displayName);
+    } catch (error) {
+      if ((error as { driverError?: { code?: string } }).driverError?.code === '23505')
+        throw new ConflictException('Seller application already exists');
       throw error;
     }
   }

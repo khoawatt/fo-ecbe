@@ -30,14 +30,22 @@ export class AccountSessionService {
   private async issue(accountId: string, sessionId: string): Promise<{ token: string; expiry: Date }> {
     const issuedAt = Math.floor(Date.now() / 1000);
     const ttl = this.config.getOrThrow<number>('app.jwtRefreshTtlSeconds');
-    const token = await this.jwt.signAsync({ sub: accountId, sid: sessionId, jti: randomUUID(), tokenType: 'refresh', iat: issuedAt });
+    const token = await this.jwt.signAsync({
+      sub: accountId,
+      sid: sessionId,
+      jti: randomUUID(),
+      tokenType: 'refresh',
+      iat: issuedAt
+    });
     return { token, expiry: new Date((issuedAt + ttl) * 1000) };
   }
 
   async create(accountId: string, metadata: SessionMetadata): Promise<string> {
     const sessionId = randomUUID();
     const next = await this.issue(accountId, sessionId);
-    if (!(await this.sessions.createSession(accountId, sessionId, this.fingerprint(next.token), next.expiry, metadata))) {
+    if (
+      !(await this.sessions.createSession(accountId, sessionId, this.fingerprint(next.token), next.expiry, metadata))
+    ) {
       throw new UnauthorizedException('Invalid credentials');
     }
     return next.token;
@@ -51,11 +59,18 @@ export class AccountSessionService {
         audience: this.config.getOrThrow<string>('app.jwtRefreshAudience')
       });
       const ttl = this.config.getOrThrow<number>('app.jwtRefreshTtlSeconds');
-      if (!isUUID(claims.sub) || !isUUID(claims.sid) || !isUUID(claims.jti) || claims.tokenType !== 'refresh' ||
-        !Number.isInteger(claims.iat) || !Number.isInteger(claims.exp) ||
+      if (
+        !isUUID(claims.sub) ||
+        !isUUID(claims.sid) ||
+        !isUUID(claims.jti) ||
+        claims.tokenType !== 'refresh' ||
+        !Number.isInteger(claims.iat) ||
+        !Number.isInteger(claims.exp) ||
         (claims.iat as number) > Math.floor(Date.now() / 1000) ||
         (claims.exp as number) <= (claims.iat as number) ||
-        (claims.exp as number) - (claims.iat as number) > ttl) throw new Error('Invalid claims');
+        (claims.exp as number) - (claims.iat as number) > ttl
+      )
+        throw new Error('Invalid claims');
       return claims as unknown as RefreshClaims;
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
@@ -64,7 +79,15 @@ export class AccountSessionService {
 
   async rotate(token: string, claims: RefreshClaims): Promise<string> {
     const next = await this.issue(claims.sub, claims.sid);
-    if (!(await this.sessions.rotateIfCurrent(claims.sub, claims.sid, this.fingerprint(token), this.fingerprint(next.token), next.expiry))) {
+    if (
+      !(await this.sessions.rotateIfCurrent(
+        claims.sub,
+        claims.sid,
+        this.fingerprint(token),
+        this.fingerprint(next.token),
+        next.expiry
+      ))
+    ) {
       throw new UnauthorizedException('Invalid refresh token');
     }
     return next.token;

@@ -16,12 +16,21 @@ export class OrderController {
     return this.orders.create(req.user.id, body.storeId, body.items);
   }
   @Get('me')
-  mine(@Req() req: Request & { user: AuthenticatedPrincipal }) { return this.orders.buyerList(req.user.id); }
+  mine(@Req() req: Request & { user: AuthenticatedPrincipal }) {
+    return this.orders.buyerList(req.user.id);
+  }
   @Get(':id')
   get(@Req() req: Request & { user: AuthenticatedPrincipal }, @Param('id', ParseUUIDPipe) id: string) {
     return this.orders.buyerRead(req.user.id, id);
   }
-  @Get('stores/:storeId/:id') @Roles('SELLER') @UseGuards(RolesGuard)
-  seller(@Req() req: Request & { user: AuthenticatedPrincipal }, @Param('storeId', ParseUUIDPipe) storeId: string,
-    @Param('id', ParseUUIDPipe) id: string) { return this.orders.sellerRead(req.user.id, storeId, id); }
+  @Get('stores/:storeId/:id')
+  @Roles('SELLER')
+  @UseGuards(RolesGuard)
+  seller(
+    @Req() req: Request & { user: AuthenticatedPrincipal },
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('id', ParseUUIDPipe) id: string
+  ) {
+    return this.orders.sellerRead(req.user.id, storeId, id);
+  }
 }

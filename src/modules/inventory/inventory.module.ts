@@ -12,7 +12,12 @@ import { InventoryService } from './inventory.service.js';
 
 @Module({
   imports: [TypeOrmModule.forFeature([InventoryEntity]), CatalogModule, StoreModule, AuthModule, AuthorizationModule],
-  providers: [InventoryRepository, { provide: INVENTORY_REPOSITORY, useExisting: InventoryRepository }, InventoryService],
-  controllers: [InventoryController], exports: [InventoryService]
+  providers: [
+    InventoryRepository,
+    { provide: INVENTORY_REPOSITORY, useExisting: InventoryRepository },
+    InventoryService
+  ],
+  controllers: [InventoryController],
+  exports: [InventoryService]
 })
 export class InventoryModule {}

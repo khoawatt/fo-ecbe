@@ -361,21 +361,14 @@ Use application-owned types.
 Example:
 
 ```ts
-export interface BaseRepositoryInterface<
-  TEntity,
-  TCreate,
-  TUpdate
-> {
+export interface BaseRepositoryInterface<TEntity, TCreate, TUpdate> {
   findById(id: string): Promise<TEntity | null>;
 
   findAll(query: PageQuery): Promise<PageResult<TEntity>>;
 
   create(data: TCreate): Promise<TEntity>;
 
-  update(
-    id: string,
-    data: TUpdate
-  ): Promise<TEntity | null>;
+  update(id: string, data: TUpdate): Promise<TEntity | null>;
 
   softDelete(id: string): Promise<boolean>;
 }
@@ -407,12 +400,11 @@ Feature contracts express application needs.
 Example:
 
 ```ts
-export interface AccountRepositoryInterface
-  extends BaseRepositoryInterface<
-    AccountEntity,
-    CreateAccountData,
-    UpdateAccountData
-  > {
+export interface AccountRepositoryInterface extends BaseRepositoryInterface<
+  AccountEntity,
+  CreateAccountData,
+  UpdateAccountData
+> {
   findByEmail(email: string): Promise<AccountEntity | null>;
   existsByEmail(email: string): Promise<boolean>;
 }
@@ -488,8 +480,7 @@ Use Symbol tokens.
 Example:
 
 ```ts
-export const ACCOUNT_REPOSITORY =
-  Symbol('ACCOUNT_REPOSITORY');
+export const ACCOUNT_REPOSITORY = Symbol('ACCOUNT_REPOSITORY');
 ```
 
 Provider:
@@ -559,10 +550,7 @@ Collection responses must remain flat:
 
 ```json
 {
-  "data": [
-    {},
-    {}
-  ],
+  "data": [{}, {}],
   "pagination": {
     "page": 1,
     "limit": 20,
@@ -627,7 +615,7 @@ Do not leak stack traces or infrastructure secrets to clients.
 Do not use plain:
 
 ```ts
-throw new Error('Account not found')
+throw new Error('Account not found');
 ```
 
 for expected application conditions.

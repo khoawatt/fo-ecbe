@@ -28,7 +28,11 @@ import { AccountSessionService } from './account-session.service.js';
       })
     })
   ],
-  providers: [AccountSessionRepository, AccountSessionService, { provide: ACCOUNT_SESSION_REPOSITORY, useExisting: AccountSessionRepository }],
+  providers: [
+    AccountSessionRepository,
+    AccountSessionService,
+    { provide: ACCOUNT_SESSION_REPOSITORY, useExisting: AccountSessionRepository }
+  ],
   exports: [AccountSessionService]
 })
 export class AccountSessionModule {}

@@ -11,7 +11,12 @@ import { ProfileRepository } from './profile.repository.js';
 import { ProfileService } from './profile.service.js';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([CustomerProfileEntity, SellerProfileEntity]), AccountModule, AuthModule, AuthorizationModule],
+  imports: [
+    TypeOrmModule.forFeature([CustomerProfileEntity, SellerProfileEntity]),
+    AccountModule,
+    AuthModule,
+    AuthorizationModule
+  ],
   providers: [ProfileRepository, { provide: PROFILE_REPOSITORY, useExisting: ProfileRepository }, ProfileService],
   controllers: [CustomerProfileController, SellerProfileController],
   exports: [ProfileService]

@@ -13,16 +13,29 @@ import { InventoryService } from './inventory.service.js';
 export class InventoryController {
   constructor(private readonly inventory: InventoryService) {}
   @Get(':variantId')
-  get(@Req() req: Request & { user: AuthenticatedPrincipal }, @Param('storeId', ParseUUIDPipe) storeId: string,
-    @Param('variantId', ParseUUIDPipe) variantId: string) { return this.inventory.get(req.user.id, storeId, variantId); }
+  get(
+    @Req() req: Request & { user: AuthenticatedPrincipal },
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('variantId', ParseUUIDPipe) variantId: string
+  ) {
+    return this.inventory.get(req.user.id, storeId, variantId);
+  }
   @Post(':variantId')
-  create(@Req() req: Request & { user: AuthenticatedPrincipal }, @Param('storeId', ParseUUIDPipe) storeId: string,
-    @Param('variantId', ParseUUIDPipe) variantId: string, @Body() body: CreateInventoryDto) {
+  create(
+    @Req() req: Request & { user: AuthenticatedPrincipal },
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('variantId', ParseUUIDPipe) variantId: string,
+    @Body() body: CreateInventoryDto
+  ) {
     return this.inventory.create(req.user.id, storeId, variantId, body.quantity);
   }
   @Patch(':variantId/adjust')
-  adjust(@Req() req: Request & { user: AuthenticatedPrincipal }, @Param('storeId', ParseUUIDPipe) storeId: string,
-    @Param('variantId', ParseUUIDPipe) variantId: string, @Body() body: AdjustInventoryDto) {
+  adjust(
+    @Req() req: Request & { user: AuthenticatedPrincipal },
+    @Param('storeId', ParseUUIDPipe) storeId: string,
+    @Param('variantId', ParseUUIDPipe) variantId: string,
+    @Body() body: AdjustInventoryDto
+  ) {
     return this.inventory.adjust(req.user.id, storeId, variantId, body.delta);
   }
 }

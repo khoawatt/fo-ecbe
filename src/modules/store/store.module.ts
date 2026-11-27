@@ -13,6 +13,7 @@ import { StoreService } from './store.service.js';
 @Module({
   imports: [TypeOrmModule.forFeature([StoreEntity]), ProfileModule, AuthModule, AuthorizationModule, AccountModule],
   providers: [StoreRepository, { provide: STORE_REPOSITORY, useExisting: StoreRepository }, StoreService],
-  controllers: [StoreController], exports: [StoreService]
+  controllers: [StoreController],
+  exports: [StoreService]
 })
 export class StoreModule {}

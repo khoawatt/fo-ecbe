@@ -7,7 +7,10 @@ import type { CatalogRepositoryInterface } from './catalog.repository.interface.
 
 @Injectable()
 export class CatalogService {
-  constructor(@Inject(CATALOG_REPOSITORY) private readonly catalog: CatalogRepositoryInterface, private readonly stores: StoreService) {}
+  constructor(
+    @Inject(CATALOG_REPOSITORY) private readonly catalog: CatalogRepositoryInterface,
+    private readonly stores: StoreService
+  ) {}
   async createProduct(accountId: string, storeId: string, name: string) {
     await this.stores.requireOwner(accountId, storeId);
     return this.catalog.createProduct(storeId, name);
@@ -33,13 +36,15 @@ export class CatalogService {
   }
   async listPublished(storeId: string) {
     await this.stores.publicStore(storeId);
-    return (await this.catalog.listProducts(storeId)).filter(p => p.status === ProductStatus.ACTIVE);
+    return (await this.catalog.listProducts(storeId)).filter((p) => p.status === ProductStatus.ACTIVE);
   }
   async createVariant(accountId: string, productId: string, sku: string, priceCents: number) {
     await this.requireProductOwner(accountId, productId);
-    try { return await this.catalog.createVariant(productId, sku, priceCents); }
-    catch (error) {
-      if ((error as { driverError?: { code?: string } }).driverError?.code === '23505') throw new ConflictException('SKU exists');
+    try {
+      return await this.catalog.createVariant(productId, sku, priceCents);
+    } catch (error) {
+      if ((error as { driverError?: { code?: string } }).driverError?.code === '23505')
+        throw new ConflictException('SKU exists');
       throw error;
     }
   }
@@ -49,15 +54,21 @@ export class CatalogService {
     const product = await this.requireProductOwner(accountId, variant.productId);
     return { variant, product };
   }
-  async updateVariant(accountId: string, variantId: string, data: { sku?: string; priceCents?: number; status?: VariantStatus }) {
+  async updateVariant(
+    accountId: string,
+    variantId: string,
+    data: { sku?: string; priceCents?: number; status?: VariantStatus }
+  ) {
     await this.requireVariantOwner(accountId, variantId);
     const safe: { sku?: string; priceCents?: number; status?: VariantStatus } = {};
     if (data.sku !== undefined) safe.sku = data.sku;
     if (data.priceCents !== undefined) safe.priceCents = data.priceCents;
     if (data.status !== undefined) safe.status = data.status;
-    try { return await this.catalog.updateVariant(variantId, safe); }
-    catch (error) {
-      if ((error as { driverError?: { code?: string } }).driverError?.code === '23505') throw new ConflictException('SKU exists');
+    try {
+      return await this.catalog.updateVariant(variantId, safe);
+    } catch (error) {
+      if ((error as { driverError?: { code?: string } }).driverError?.code === '23505')
+        throw new ConflictException('SKU exists');
       throw error;
     }
   }

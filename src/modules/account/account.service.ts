@@ -1,9 +1,20 @@
-import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException
+} from '@nestjs/common';
 import { BaseServiceAbstract } from '../../core/service/base-service.abstract.js';
 import { ACCOUNT_REPOSITORY } from './account.constants.js';
 import type { AccountRepositoryInterface } from './contracts/account-repository.interface.js';
 import type { AccountRecord, CreateAccountData, UpdateAccountData } from './contracts/account-repository.types.js';
-import type { AuthenticatedAccount, CreateAccountInput, UpdateAccountInput } from './contracts/account-service.types.js';
+import type {
+  AuthenticatedAccount,
+  CreateAccountInput,
+  UpdateAccountInput
+} from './contracts/account-service.types.js';
 import { PasswordHashingService } from './password-hashing.service.js';
 import { AccountStatus } from './types/account-status.js';
 import { normalizeEmail } from './utils/normalize-email.js';
@@ -55,7 +66,11 @@ export class AccountService extends BaseServiceAbstract<AccountRecord, never, Up
   async changePassword(accountId: string, currentPassword: string, newPassword: string): Promise<AccountRecord> {
     const account = await this.findById(accountId);
     const credentials = await this.accounts.findCredentialsByEmail(account.email);
-    if (!credentials || credentials.id !== accountId || !(await this.passwords.verify(currentPassword, credentials.passwordHash))) {
+    if (
+      !credentials ||
+      credentials.id !== accountId ||
+      !(await this.passwords.verify(currentPassword, credentials.passwordHash))
+    ) {
       throw new UnauthorizedException('Invalid current password');
     }
     const nextHash = await this.passwords.hash(newPassword);
@@ -72,7 +87,12 @@ export class AccountService extends BaseServiceAbstract<AccountRecord, never, Up
 
   async verifyCredentials(email: string, password: string): Promise<AuthenticatedAccount | null> {
     const credentials = await this.accounts.findCredentialsByEmail(normalizeEmail(email));
-    if (!credentials || credentials.status !== AccountStatus.ACTIVE || !(await this.passwords.verify(password, credentials.passwordHash))) return null;
+    if (
+      !credentials ||
+      credentials.status !== AccountStatus.ACTIVE ||
+      !(await this.passwords.verify(password, credentials.passwordHash))
+    )
+      return null;
     return {
       id: credentials.id,
       email: credentials.email,

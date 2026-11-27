@@ -14,5 +14,7 @@ export class CreateStores1794052000000 implements MigrationInterface {
     await q.query('CREATE INDEX "ix_stores_seller_profile_id" ON "stores" ("seller_profile_id")');
     await q.query('CREATE UNIQUE INDEX "uq_stores_slug" ON "stores" ("slug")');
   }
-  async down(q: QueryRunner): Promise<void> { await q.query('DROP TABLE "stores"'); }
+  async down(q: QueryRunner): Promise<void> {
+    await q.query('DROP TABLE "stores"');
+  }
 }

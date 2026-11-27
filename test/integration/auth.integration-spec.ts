@@ -58,7 +58,14 @@ describe('AuthService (PostgreSQL integration)', () => {
         AppConfigModule,
         TypeOrmModule.forRoot({
           ...options,
-          entities: [AccountEntity, AccountRoleEntity, AccountSessionEntity, PermissionEntity, RoleEntity, RolePermissionEntity],
+          entities: [
+            AccountEntity,
+            AccountRoleEntity,
+            AccountSessionEntity,
+            PermissionEntity,
+            RoleEntity,
+            RolePermissionEntity
+          ],
           migrations: [],
           extra: { ...(options.extra ?? {}), options: `-c search_path="${schema}",public` }
         }),
@@ -79,14 +86,27 @@ describe('AuthService (PostgreSQL integration)', () => {
   }, 30_000);
 
   it('uses real account credentials, status and ordered canonical roles', async () => {
-    const account = await accounts.createAccount({ email: 'User@Example.COM', password: 'synthetic-integration-password' });
+    const account = await accounts.createAccount({
+      email: 'User@Example.COM',
+      password: 'synthetic-integration-password'
+    });
     expect(await auth.validateCredentials('USER@EXAMPLE.COM', 'synthetic-integration-password')).toBeNull();
     await accounts.setAccountStatus(account.id, AccountStatus.ACTIVE);
-    const [admin] = await source.query("INSERT INTO roles (code, name) VALUES ('ADMIN', 'Administrator') RETURNING id") as Array<{ id: string }>;
-    const [seller] = await source.query("INSERT INTO roles (code, name) VALUES ('SELLER', 'Seller') RETURNING id") as Array<{ id: string }>;
-    await source.query('INSERT INTO account_roles (account_id, role_id) VALUES ($1, $2), ($1, $3)', [account.id, seller?.id, admin?.id]);
+    const [admin] = (await source.query(
+      "INSERT INTO roles (code, name) VALUES ('ADMIN', 'Administrator') RETURNING id"
+    )) as Array<{ id: string }>;
+    const [seller] = (await source.query(
+      "INSERT INTO roles (code, name) VALUES ('SELLER', 'Seller') RETURNING id"
+    )) as Array<{ id: string }>;
+    await source.query('INSERT INTO account_roles (account_id, role_id) VALUES ($1, $2), ($1, $3)', [
+      account.id,
+      seller?.id,
+      admin?.id
+    ]);
     expect(await auth.validateCredentials(' USER@EXAMPLE.COM ', 'synthetic-integration-password')).toEqual({
-      id: account.id, email: 'user@example.com', roleCodes: ['ADMIN', 'SELLER']
+      id: account.id,
+      email: 'user@example.com',
+      roleCodes: ['ADMIN', 'SELLER']
     });
     expect(await auth.validateCredentials('user@example.com', 'incorrect')).toBeNull();
     for (const status of [AccountStatus.SUSPENDED, AccountStatus.DISABLED, AccountStatus.PENDING]) {

@@ -25,6 +25,7 @@ export class CreateCatalog1794053000000 implements MigrationInterface {
     await q.query('CREATE UNIQUE INDEX "uq_product_variants_sku" ON "product_variants" ("sku")');
   }
   async down(q: QueryRunner): Promise<void> {
-    await q.query('DROP TABLE "product_variants"'); await q.query('DROP TABLE "products"');
+    await q.query('DROP TABLE "product_variants"');
+    await q.query('DROP TABLE "products"');
   }
 }

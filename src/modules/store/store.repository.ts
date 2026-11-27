@@ -24,6 +24,8 @@ export class StoreRepository implements StoreRepositoryInterface {
     return this.record(await this.stores.findOneByOrFail({ id }));
   }
   async findBySeller(sellerProfileId: string): Promise<StoreRecord[]> {
-    return (await this.stores.find({ where: { sellerProfileId }, order: { createdAt: 'ASC', id: 'ASC' } })).map(s => this.record(s));
+    return (await this.stores.find({ where: { sellerProfileId }, order: { createdAt: 'ASC', id: 'ASC' } })).map((s) =>
+      this.record(s)
+    );
   }
 }

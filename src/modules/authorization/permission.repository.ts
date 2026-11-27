@@ -10,13 +10,14 @@ export class PermissionRepository implements PermissionRepositoryInterface {
 
   async findCodesForRoles(roleCodes: string[]): Promise<string[]> {
     if (!roleCodes.length) return [];
-    const rows = await this.permissions.createQueryBuilder('permission')
+    const rows = await this.permissions
+      .createQueryBuilder('permission')
       .select('DISTINCT permission.code', 'code')
       .innerJoin('role_permissions', 'rp', 'rp.permission_id = permission.id')
       .innerJoin('roles', 'role', 'role.id = rp.role_id')
       .where('role.code IN (:...roleCodes)', { roleCodes })
       .orderBy('permission.code', 'ASC')
       .getRawMany<{ code: string }>();
-    return rows.map(row => row.code);
+    return rows.map((row) => row.code);
   }
 }
